@@ -11,15 +11,9 @@ let format_post_wait_graph chan (graph, classifier) =
     let edge_attributes (_, label, _) = match label with
       | PostWaitEdge.POST -> [ `Style `Solid ]
       | PostWaitEdge.HB -> [ `Style `Dashed ]
-    let vertex_attributes v =
-      begin match IntMap.find v classifier with
-      | ToplevelScript -> `Fillcolor 0xffff00
-      | DelayedScript -> `Fillcolor 0x80ff80
-      | EventHandlerScript -> `Fillcolor 0x8080ff
-      | SomeScript -> `Fillcolor 0xff0000
-      | _ -> `Fillcolor 0xff0000
-      | exception Not_found -> `Fillcolor 0xff0000
-      end :: [ `Style `Filled ]
+    let vertex_attributes =
+      ClassificationLayout.vertex_attribute classifier
+        (fun _ -> [])
     let get_subgraph _ = None
     let vertex_name = string_of_int
   end in

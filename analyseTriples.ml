@@ -20,8 +20,16 @@ let build_triple_graph filename =
                           | Post id when id <> (-1) ->
                               begin
                                 match IntMap.find id classification with
-                                  | EventHandlerScript
-                                  | SomeScript ->
+                                  | ImmediateEventHandlerScript
+                                  | ShortTimerEventHandlerScript
+                                  | LongTimerEventHandlerScript
+                                  | AnimationEventHandlerScript
+                                  | ResourceLoadEventHandlerScript
+                                  | WindowInteractiveScript
+                                  | WindowCompleteScript
+                                  | UIEventHandlerScript
+                                  | OtherEventHandlerScript
+                                  | UnclearScript ->
                                       Some (IntSet.add id (IntMap.find id post_sets))
                                   | _ -> None
                                   | exception Not_found -> None
@@ -34,8 +42,11 @@ let build_triple_graph filename =
   and toplevel =
     BatList.filter_map (fun { id } ->
                           match IntMap.find id classification with
-                            | ToplevelScript
-                            | DelayedScript -> Some id
+                            | InlineScript
+                            | ExternalSyncScript
+                            | ExternalAsyncScript
+                            | ExternalDeferScript
+                            | ExternalUnknownScript -> Some id
                             | _ -> None
                             | exception Not_found -> None)
       events

@@ -38,13 +38,8 @@ let build_post_wait_graph trace =
     Format.eprintf "js_tasks@.";
     BatList.filter_map
       (fun { id } ->
-         match IntMap.find id classifier with
-           | ToplevelScript
-           | EventHandlerScript
-           | DelayedScript
-           | SomeScript -> Some id
-           | _ -> None
-           | exception Not_found -> None)
+         try if is_script (IntMap.find id classifier) then Some id else None
+         with Not_found -> None)
       events
   in let post_graph =
     Format.eprintf "post_graph@.";

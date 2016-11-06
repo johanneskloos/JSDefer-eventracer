@@ -35,15 +35,12 @@ let classify_scripts order classification dom =
   in let propagated_dom = backpropagate (IntSet.to_list dom) dom
   in IntMap.filter_map
        (fun s c ->
-          match c with
-            | ToplevelScript
-            | DelayedScript
-            | SomeScript ->
-                if IntSet.mem s propagated_dom then
-                  Some DOMaccess
-                else 
-                  Some Deferable
-            | _ -> None)
+          if is_toplevel_script c then
+            if IntSet.mem s propagated_dom then
+              Some DOMaccess
+            else 
+              Some Deferable
+          else None)
        classification
 
 let dom_reference = function
