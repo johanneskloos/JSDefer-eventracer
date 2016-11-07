@@ -236,7 +236,7 @@ let update_type_known outer_state inner_state cmd =
             Some e ->
               { inner_state with type_known = Some (from_event_type e) }
           | None ->
-              Format.eprintf "Can't classify script type, inner state: %a, outer state: %a@."
+              Format.eprintf "@[<v2>Can't classify script type (top-level)@,inner state: @[<hov>%a@]@,outer state: @[<hov>%a@]@,@]@."
                 pp_inner_state inner_state pp_state outer_state;
               { inner_state with type_known = Some UnclearScript }
         end
@@ -247,6 +247,8 @@ let update_type_known outer_state inner_state cmd =
             Some e ->
               { inner_state with type_known = Some (from_event_type e) }
           | None ->
+              Format.eprintf "@[<v2>Can't classify script type (reference)@,inner state: @[<hov>%a@]@,outer state: @[<hov>%a@]@,@]@."
+                pp_inner_state inner_state pp_state outer_state;
               { inner_state with type_known = Some UnclearScript }
         end
     | _ -> inner_state
