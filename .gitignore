@@ -6,3 +6,5 @@
 *.native
 _build
 collect-jobs
+traces_pb.ml
+traces_pb.mli
