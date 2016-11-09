@@ -170,7 +170,7 @@ let find_event_type = function
          UIEvent
 
 let update_event_kind inner_state cmd =
-  if inner_state.type_known = None then
+  if inner_state.type_known = None && inner_state.event_kind = None then
     match cmd with
       | Enter (EventFire FireAnchor) ->
           { inner_state with event_kind = Some UIEvent }
