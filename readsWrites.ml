@@ -66,3 +66,17 @@ let per_event_specification specs { id; commands } =
 let per_event_specification { events } =
   List.fold_left per_event_specification IntMap.empty events
 
+(* [combine_reads_writes spec1 spec2] performs sequential
+ * composition of spec1 and spec2. *)
+let combine_reads_writes 
+      { reads = reads1; writes = writes1; posts = posts1 }
+      { reads = reads2; writes = writes2; posts = posts2 } =
+  { reads =
+      ReferenceMap.merge
+        (fun r v1 v2 ->
+           if v1 = None && not (ReferenceMap.mem r writes1) then v2 else v1)
+        reads1 reads2;
+    writes =
+      ReferenceMap.merge (fun _ w1 w2 -> if w2 = None then w1 else w2)
+        writes1 writes2;
+    posts = IntSet.union posts1 posts2 }

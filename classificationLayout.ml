@@ -25,6 +25,16 @@ open ClassifyTask
  * EH without script    Gainsboro
  * Network wait         LightSlateGray
  * Other                Red
+ *
+ * Additionally, certain kinds of nodes get an
+ * "importent" marking by making their font bold.
+ * They are: InlineScript, ExternalSyncScript,
+ * ExternalUnknownScript, ImmedEventHandlerScript,
+ * ShortTimerEventHandlerScript, WindowInteractiveScript,
+ * WindowCompleteScript.
+ *
+ * Furthermore, ExternalSyncScript and ImmedEventHandlerScrpit
+ * get a bold border as well.
  *)
 let classify_color = function
   | InlineScript -> 0xffff00
@@ -46,8 +56,50 @@ let classify_color = function
   | EventHandlerNoScript -> 0xDCDCDC
   | NetworkWait -> 0x778899
   | Other -> 0xFF0000
-
+let classify_font = function
+  | InlineScript
+  | ExternalSyncScript
+  | ExternalUnknownScript
+  | ImmediateEventHandlerScript
+  | ShortTimerEventHandlerScript
+  | WindowInteractiveScript
+  | WindowCompleteScript -> "Times-12:bold"
+  | _ -> "Times-12"
+let classify_style = function
+  | ExternalSyncScript
+  | ImmediateEventHandlerScript -> `Bold
+  | _ -> `Solid
 let vertex_attribute classifier more v =
   let c = try IntMap.find v classifier with Not_found -> Other
-  in [ `Fillcolor (classify_color c); `Style `Filled ] @ more v
+  in [ `Fillcolor (classify_color c); `Style `Filled;
+       `Fontname (classify_font c); `Style (classify_style c) ] @ more v
+
+let output_dependency_graph graph classification vertex_more edge channel =
+  let module FMT = struct
+    include Trace.DependencyGraph
+    let graph_attributes (_: t) = []
+    let default_vertex_attributes (_: t) = []
+    let default_edge_attributes (_: t) = []
+    let get_subgraph (_: V.t) = None
+    let vertex_name = string_of_int
+    let vertex_attributes = vertex_attribute classification vertex_more
+    let edge_attributes = edge
+  end in
+  let module DOT = Graph.Graphviz.Dot(FMT)
+  in DOT.output_graph channel graph
+let output_post_wait_graph graph classification vertex_more channel =
+  let module FMT = struct
+    include PostAndWaitGraph.PostWaitGraph
+    let graph_attributes (_: t) = []
+    let default_vertex_attributes (_: t) = []
+    let default_edge_attributes (_: t) = []
+    let get_subgraph (_: V.t) = None
+    let vertex_name = string_of_int
+    let vertex_attributes = vertex_attribute classification vertex_more
+    let edge_attributes (_, edgetype, _) = match edgetype with
+      | PostAndWaitGraph.PostWaitEdge.POST -> [ `Style `Solid ]
+      | PostAndWaitGraph.PostWaitEdge.HB -> [ `Style `Dashed ]
+  end in
+  let module DOT = Graph.Graphviz.Dot(FMT)
+  in DOT.output_graph channel graph
 

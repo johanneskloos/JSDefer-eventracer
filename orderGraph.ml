@@ -35,7 +35,7 @@ let warn_read_incompatibility v1 v2 =
     | Some v1, Some v2 ->
         if v1 <> v2 then
           Format.eprintf
-            "Error: Nondeterministic read, got both %a and %a@."
+            "Warning: Nondeterministic read, got both %a and %a@."
             pp_value v1 pp_value v2
 
 let guid_heuristic = ref false
@@ -70,9 +70,6 @@ let add_mo_edges dependent_reads ecur ref v1 graph =
 let merge_dependent_reads ecur (_: reference) dep_reads read =
   match dep_reads, read with
     | Some (deps, Some v1), Some (Some v2) ->
-        if v1 <> v2 then
-          Format.eprintf "Warning: Nondeterministic reads, saw both %a and %a@."
-            pp_value v1 pp_value v2;
         Some (ecur :: deps, Some v2)
     | Some (deps, v), Some None ->
         Some (ecur :: deps, v)
@@ -106,9 +103,10 @@ let dependency_graph trace =
        { graph = DependencyGraph.empty;
          dependent_reads = ReferenceMap.empty;
          last_writes = ReferenceMap.empty }
-  in graph
+  in (graph, reads_writes)
 
 let build_graphs trace =
-  let dep = dependency_graph trace
-  and pw = build_post_wait_graph trace
-  in close_log (); (trace, dep, pw)
+  let (trace, classification) = ClassifyTask.classify trace in
+  let (dep, prepost) = dependency_graph trace
+  and pw = build_post_wait_graph trace classification
+  in close_log (); (trace, dep, pw, classification, prepost)

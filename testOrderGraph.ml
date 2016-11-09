@@ -24,7 +24,7 @@ let handle_log reasons remove filename =
   let base = Filename.chop_suffix (Filename.basename filename) ".log" in
     if !reasons then
       OrderGraph.log (open_out (base ^ ".reasons"));
-  let (trace, dep, (pw, classification)) =
+  let (trace, dep, pw, classification, prepost) =
     filename
       |> CleanLog.load
       |> Trace.parse_trace

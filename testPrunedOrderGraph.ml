@@ -55,8 +55,8 @@ let handle_log reasons remove filename =
       |> Trace.parse_trace
       |> PruneOrderGraph.prune_order_graph (fun _ _ _ _ -> !remove)
   in let _ = remove := []
-  in let chan = open_out (base ^ ".dep.dot")
-  in let dom_accesses =
+  and chan = open_out (base ^ ".dep.dot")
+  and dom_accesses =
     BatList.fold_left
       (fun dom { id; commands } ->
          if dom_access commands then IntSet.add id dom else dom)

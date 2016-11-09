@@ -192,7 +192,9 @@ let update_saw_cached_resource inner_state = function
   | _ -> inner_state
 let update_network_resource inner_state = function
   | Read (RCachedResource _, _)
+  | Read (RScriptRunner _, _)
   | Write (RCachedResource _, _)
+  | Write (RScriptRunner _, _)
   | Post _ -> inner_state
   | _ -> { inner_state with network_resource = false }
 let update_saw_script_runner_timer inner_state = function

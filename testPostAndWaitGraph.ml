@@ -2,7 +2,7 @@ open ClassifyTask
 open Trace
 open PostAndWaitGraph
 
-let format_post_wait_graph chan (graph, classifier) =
+let format_post_wait_graph chan graph classifier =
   let module DOTFormat = struct
     include PostWaitGraph
     let graph_attributes _ = []
@@ -31,15 +31,14 @@ let remove_branches cut_here graph =
 
 let handle_log cut_here filename =
   let base = Filename.chop_suffix (Filename.basename filename) ".log" in
-  let data =
-    filename
-      |> CleanLog.load
-      |> Trace.parse_trace
-      |> build_post_wait_graph
-      |> BatTuple.Tuple2.map1 (remove_branches !cut_here)
+  let (trace, classification) =
+    filename |> CleanLog.load |> Trace.parse_trace |> ClassifyTask.classify
+  in let data =
+      build_post_wait_graph trace classification
+      |> remove_branches !cut_here
   in let chan = open_out (base ^ ".dot")
   in try
-    format_post_wait_graph chan data;
+    format_post_wait_graph chan data classification;
     flush chan;
     close_out chan
   with e ->

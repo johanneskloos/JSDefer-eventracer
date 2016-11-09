@@ -32,8 +32,8 @@ let add_edges hb po good g =
     (* Then, walk the hb relation. *)
     |> add_edges_for PostWaitEdge.HB hb good
 
-let build_post_wait_graph trace =
-  let ({ events; deps }, classifier) = classify trace
+let build_post_wait_graph trace classifier =
+  let { events; deps } = trace
   in let js_tasks =
     Format.eprintf "js_tasks@.";
     BatList.filter_map
@@ -56,5 +56,5 @@ let build_post_wait_graph trace =
     BatList.fold_left PostWaitGraph.add_vertex PostWaitGraph.empty js_tasks
     |> add_edges deps post_graph js_tasks
   in Format.eprintf "reduce@.";
-     (Oper.transitive_reduction graph, classifier)
+     Oper.transitive_reduction graph
 
