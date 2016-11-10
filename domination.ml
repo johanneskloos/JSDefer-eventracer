@@ -113,23 +113,25 @@ let pp_result pp { verdict; nondet; data } =
 
 let deferability_analysis cl { has_nondeterminism } dom =
   let open ClassifyTask in
-  IntMap.mapi
+  IntMap.filter_map
     (fun v vc ->
-       let ve = match vc with
-         | ExternalSyncScript ->
-             let { dom_accesses; inline_scripts; async_scripts } = dom v  in
-               if IntSet.mem v dom_accesses then HasDOMAccess
-               else if not (IntSet.is_empty dom_accesses) then DominatedByDOMAccess
-               else if not (IntSet.is_empty inline_scripts) then DominatedByInlineScript
-               else if not (IntSet.is_empty async_scripts) then DominatedByAsyncScript
-               else Deferable
-         | ExternalAsyncScript -> IsAsyncScript
-         | ExternalDeferScript -> Deferred
-         | InlineScript -> IsInlineScript
-         | UnclearScript -> failwith "Unclear script type"
-         | _ -> failwith "Non-script classification found"
-       in { verdict = ve; nondet = IntSet.mem v has_nondeterminism;
-            data = dom v })
+       try
+         let ve = match vc with
+           | ExternalSyncScript ->
+               let { dom_accesses; inline_scripts; async_scripts } = dom v  in
+                 if IntSet.mem v dom_accesses then HasDOMAccess
+                 else if not (IntSet.is_empty dom_accesses) then DominatedByDOMAccess
+                 else if not (IntSet.is_empty inline_scripts) then DominatedByInlineScript
+                 else if not (IntSet.is_empty async_scripts) then DominatedByAsyncScript
+                 else Deferable
+           | ExternalAsyncScript -> IsAsyncScript
+           | ExternalDeferScript -> Deferred
+           | InlineScript -> IsInlineScript
+           | UnclearScript -> failwith "Unclear script type"
+           | _ -> raise Exit
+         in Some { verdict = ve; nondet = IntSet.mem v has_nondeterminism;
+                   data = dom v }
+       with Exit -> None)
     cl
 
 let calculate_domination trace =
