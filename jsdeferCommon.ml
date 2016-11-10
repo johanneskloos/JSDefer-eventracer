@@ -95,7 +95,7 @@ let analyze log filename =
               else
                 [ `Style `Dotted ]));
       write_to_file (base ^ ".dom")
-        Fmt.(using (IntMap.mapi (fun i _ -> dom i))
+        Fmt.(using (IntMap.filter_map (fun i _ -> try Some (dom i) with Not_found -> None))
                (IntMap.pp_default ~esep:cut ~psep:(const string ": ")
                   (box ~indent:2 pp_analysis_result)))
         cl;
