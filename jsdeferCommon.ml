@@ -70,6 +70,27 @@ let write_pre filename dcl_pre =
     write_to_file filename
       (ReferenceMap.pp_default ~psep:(const string ":") (option Trace.pp_value)) dcl_pre
 
+let write_json def chan =
+  let open Yojson.Basic in
+  let intset_to_list s =
+    `List (IntSet.fold (fun i l -> `Int i :: l) s [])
+  in let data =
+    `Assoc (IntMap.fold (fun id { verdict; nondet;
+                                  data = { dom_accesses; inline_scripts;
+                                           async_scripts } } l ->
+                           let data = 
+                             `Assoc [
+                               ("nondet", `Bool nondet);
+                               ("verdict", `String (verdict_to_string verdict));
+                               ("domdom", intset_to_list dom_accesses);
+                               ("dominline", intset_to_list inline_scripts);
+                               ("domasync", intset_to_list async_scripts)
+                             ] 
+                           in (string_of_int id, data) :: l)
+              def [])
+  in to_channel chan data
+
+
 let analyze log filename =
   let base = Filename.chop_suffix (Filename.basename filename) ".log" in
     if !log then ReducedOrderGraph.log (open_out (base ^ ".details"));
@@ -102,4 +123,5 @@ let analyze log filename =
       write_to_file (base ^ ".verdict")
         Fmt.(IntMap.pp_default ~esep:cut ~psep:(const string ": ")
                pp_result)
-        def
+        def;
+      with_out_file (base ^ ".json") (write_json def)
