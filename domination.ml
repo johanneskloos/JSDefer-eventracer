@@ -131,7 +131,7 @@ let deferability_analysis cl { has_nondeterminism } dom =
            | _ -> raise Exit
          in Some { verdict = ve; nondet = IntSet.mem v has_nondeterminism;
                    data = dom v }
-       with Exit -> None)
+       with Exit -> None | Not_found -> None)
     cl
 
 let calculate_domination trace =
