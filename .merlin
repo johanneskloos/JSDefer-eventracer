@@ -1,2 +1,2 @@
-PKG ocamlgraph batteries fmt eventracer ppx_deriving.ord ocaml-protoc ppx_deriving.show
+PKG ocamlgraph batteries fmt eventracer ppx_deriving.ord ppx_deriving.show
 B _build

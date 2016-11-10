@@ -562,3 +562,5 @@ let pp_trace_with_deps pp { events; deps } = let open Fmt in
 let pp_trace_indent pp { events; deps } = let open Fmt in
   vbox (list ~sep:Fmt.cut (pp_event_indent)) pp events
 
+let load_trace filename =
+  filename |> CleanLog.load |> parse_trace
