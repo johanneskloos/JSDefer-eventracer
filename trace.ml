@@ -160,6 +160,23 @@ let event_queue_scope_str = function
   | EQEventQueue -> "generic event queue"
 let pp_event_queue_scope = Fmt.using event_queue_scope_str Fmt.string
 
+type script_type =
+  | STunknown
+  | STinline
+  | STsync
+  | STasync
+  | STdefer
+  | STIinline
+  | STIasync [@@deriving ord]
+let script_type_to_string = function
+  | STunknown -> "unknown script type"
+  | STinline -> "inline script"
+  | STsync -> "synchronous external script"
+  | STasync -> "async script"
+  | STdefer -> "defer script"
+  | STIinline -> "inserted inline script"
+  | STIasync -> "inserted async script"
+let pp_script_type = Fmt.using script_type_to_string Fmt.string
 type scope = 
   | JSONDeclareGlobalvar
   | JSONDeclareGlobal
@@ -184,8 +201,10 @@ type scope =
   | TimerDOM
   | EventQueue of event_queue_scope
   | CachedResource
-  | SUnknown [@@deriving ord]
-
+  | SUnknown
+  | Script of script_type
+  | Nondet of string
+  | Env of string [@@deriving ord]
 let pp_scope pp = let open Fmt in function
     | JSONDeclareGlobalvar -> string pp "json_declare_globalvar"
     | JSONDeclareGlobal -> string pp "json_declare_global"
@@ -216,7 +235,9 @@ let pp_scope pp = let open Fmt in function
     | DocumentEvent e -> pp_document_event pp e
     | EventQueue e -> pp_event_queue_scope pp e
     | SUnknown -> string pp "(unknown scope)"
-
+    | Script t -> pp_script_type pp t
+    | Nondet f -> pf pp "nondet call: %s" f
+    | Env f -> pf pp "env-dep. call: %s" f
 let is_javascript_scope = function
   | JSONDeclareGlobal
   | JSONDeclareGlobalvar
@@ -447,6 +468,13 @@ let match_scope = function
   | "eh:wheel" -> EventHandler EHWheel
   | "eh:key" -> EventHandler EHKey
   | "DOM Timer" -> TimerDOM
+  | "unknown script" -> Script STunknown
+  | "sync script" -> Script STunknown
+  | "async script" -> Script STasync
+  | "defer script" -> Script STdefer
+  | "inline script" -> Script STinline
+  | "inserted async script" -> Script STIasync
+  | "inserted inline script" -> Script STIinline
   | s -> match_first s match_scope_pats
 
 let parse_value = let open EventRacer in function
