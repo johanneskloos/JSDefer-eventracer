@@ -113,14 +113,12 @@ type inner_state = {
   saw_html: bool;
   potential_animation_request: bool;
   event_kind: event_kind option;
-  saw_cached_resource: bool;
   network_resource: bool;
-  saw_script_runner_timer: bool;
   type_known: classification option;
 } [@@deriving show]
 
 let update_saw_html inner_state = function
-  | Enter (Parse _) -> { inner_state with saw_html = true; saw_cached_resource = false }
+  | Enter (Parse _) -> { inner_state with saw_html = true }
   | _ -> inner_state
 
 let update_animation_requests (outer_state, inner_state) = function
@@ -185,11 +183,6 @@ let update_event_kind inner_state cmd =
       | _ -> inner_state
   else inner_state
 
-let update_saw_cached_resource inner_state = function
-  | Read (RCachedResource _, _)
-  | Write (RCachedResource _, _)
-  | Enter CachedResource -> { inner_state with saw_cached_resource = true }
-  | _ -> inner_state
 let update_network_resource inner_state = function
   | Read (RCachedResource _, _)
   | Read (RScriptRunner _, _)
@@ -197,9 +190,6 @@ let update_network_resource inner_state = function
   | Write (RScriptRunner _, _)
   | Post _ -> inner_state
   | _ -> { inner_state with network_resource = false }
-let update_saw_script_runner_timer inner_state = function
-  | Enter TimerScript -> { inner_state with saw_script_runner_timer = true }
-  | _ -> inner_state
 
 let from_event_type = function
   | ImmediateTimerEvent -> ImmediateEventHandlerScript
@@ -211,37 +201,27 @@ let from_event_type = function
   | DocLoadedEvent -> WindowCompleteScript
   | UIEvent -> UIEventHandlerScript
 
+let translate_script_type = function
+  | STinline -> InlineScript
+  | STasync -> ExternalAsyncScript
+  | STdefer -> ExternalDeferScript
+  | STsync -> ExternalSyncScript
+  | STIinline -> InlineScript
+  | STIasync -> ExternalAsyncScript
+  | STunknown -> UnclearScript
+
 let update_type_known outer_state inner_state cmd =
   if inner_state.type_known <> None then inner_state
   else match cmd with
+    | Enter (Script t) ->
+        { inner_state with type_known = Some (translate_script_type t) }
     | Enter JSONDeclareGlobal
     | Enter JSONDeclareGlobalvar
     | Enter JSDeclareFunction
     | Enter JSDeclareGlobalvar
     | Enter (JSCode { jstype = GlobalCode }) ->
-        if inner_state.saw_html && not inner_state.saw_cached_resource then
-          { inner_state with type_known = Some InlineScript }
-        else if inner_state.saw_html then
-          (* Cached sync script *)
-          { inner_state with type_known = Some ExternalSyncScript }
-        else if inner_state.saw_script_runner_timer then
-          { inner_state with type_known = Some ExternalAsyncScript }
-        else if inner_state.saw_cached_resource &&
-                outer_state.parsing_may_be_suspended &&
-                inner_state.network_resource
-        then
-          { inner_state with type_known = Some ExternalSyncScript }
-        else if inner_state.saw_cached_resource &&
-                inner_state.network_resource then
-          { inner_state with type_known = Some ExternalDeferScript }
-        else begin match inner_state.event_kind with
-            Some e ->
-              { inner_state with type_known = Some (from_event_type e) }
-          | None ->
-              Format.eprintf "@[<v2>Can't classify script type (top-level)@,inner state: @[<hov>%a@]@,outer state: @[<hov>%a@]@,@]@."
-                pp_inner_state inner_state pp_state outer_state;
-              { inner_state with type_known = Some UnclearScript }
-        end
+        Format.eprintf "Entered top-level script code without surrounding script tag@.";
+        { inner_state with type_known = Some UnclearScript }
     | Enter JSExec _
     | Enter JSCall _
     | Enter JSCode _ ->
@@ -305,18 +285,14 @@ let update_command deps id (outer_state, inner_state) command =
   in let (outer_state, inner_state) =
     update_animation_requests (outer_state, inner_state) command
   in let inner_state = update_saw_html inner_state command
-  in let inner_state = update_saw_cached_resource inner_state command
   in let inner_state = update_network_resource inner_state command
-  in let inner_state = update_saw_script_runner_timer inner_state command
   in let inner_state = update_event_kind inner_state command
   in (outer_state, inner_state)
 let initial_inner_state = {
   saw_html = false;
   potential_animation_request = false;
   event_kind = None;
-  saw_cached_resource = false;
   network_resource = true;
-  saw_script_runner_timer = false;
   type_known = None;
 }
 let initial_event_kind deps id { outstanding_animation_frames } =
