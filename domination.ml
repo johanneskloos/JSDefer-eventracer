@@ -129,7 +129,7 @@ let deferability_analysis cl { has_nondeterminism } dom =
            | InlineScript -> IsInlineScript
            | UnclearScript -> failwith "Unclear script type"
            | _ -> raise Exit
-         in Some { verdict = ve; nondet = IntSet.mem v has_nondeterminism;
+         in Some { verdict = ve; nondet = IntMap.mem v has_nondeterminism;
                    data = dom v }
        with Exit -> None | Not_found -> None)
     cl

@@ -57,7 +57,8 @@ let pp_data pp { ReducedOrderGraph.has_dom_write; has_nondeterminism;
                 Short-timeout events caused by scripts: @[<hov>%a@]@,\
                 Specifications:@,%a@]@."
       (IntSet.pp ~sep:sp) has_dom_write
-      (IntSet.pp ~sep:sp) has_nondeterminism
+      (IntMap.pp_default ~esep:sp ~psep:(const string ":")
+         (braces (StringSet.pp ~sep:sp))) has_nondeterminism
       (list ~sep:sp (pair ~sep:(const string "-") int int)) potential_races
       (list ~sep:sp int) script_short_timeouts
       (IntMap.pp ~sep:cut (vbox ~indent:2 (pair ~sep:sp int pp_spec))) spec

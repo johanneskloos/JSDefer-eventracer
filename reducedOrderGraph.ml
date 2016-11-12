@@ -110,7 +110,7 @@ let task_step ecur { reads; writes } { dependent_reads; last_writes; graph } =
 
 type data = {
   has_dom_write: IntSet.t;
-  has_nondeterminism: IntSet.t;
+  has_nondeterminism: StringSet.t IntMap.t;
   spec: ReadsWrites.event_standalone_spec IntMap.t;
   po: PostAndWaitGraph.PostWaitGraph.t;
   potential_races: (int * int) list;
@@ -122,9 +122,14 @@ let merge_successor pre ({ has_nondeterminism; has_dom_write; spec; po } as data
   log_red pre succ;
   let merge_intset set =
     if IntSet.mem succ set then IntSet.add pre (IntSet.remove succ set) else set
+  and merge_nondet map =
+    match IntMap.Exceptionless.find succ map with
+      | Some nondet ->
+          IntMap.modify_def StringSet.empty pre (StringSet.union nondet) map
+      | None -> map
   in { data with
     has_dom_write = merge_intset has_dom_write;
-    has_nondeterminism = merge_intset has_nondeterminism;
+    has_nondeterminism = merge_nondet has_nondeterminism;
     spec = IntMap.modify pre
              (fun pre ->
                 ReadsWrites.combine_reads_writes pre (IntMap.find succ spec))
@@ -225,7 +230,7 @@ let filter_irrelevant scripts
       { has_dom_write; has_nondeterminism; spec; po;
         potential_races; script_short_timeouts } =
   { has_dom_write = IntSet.inter has_dom_write scripts;
-    has_nondeterminism = IntSet.inter has_nondeterminism scripts;
+    has_nondeterminism = IntMap.filter (fun v _ -> IntSet.mem v scripts) has_nondeterminism;
     spec = IntMap.filter (fun v _ -> IntSet.mem v scripts) spec;
     po = filter_graph (fun v -> IntSet.mem v scripts) po;
     potential_races;

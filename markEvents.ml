@@ -3,7 +3,7 @@ open Trace
 (* Mark DOM writes and non-determinism *)
 type markings = {
   has_dom_write: IntSet.t;
-  has_nondeterminism: IntSet.t;
+  has_nondeterminism: StringSet.t IntMap.t;
 }
 
 let rec fold_js_commands_impl f level commands acc =
@@ -48,6 +48,11 @@ let nondet_heap = [
   ("Window", "orientation;")
 ]
 
+let nondet_string = function
+  | RHeap { objtype; prop } ->
+      objtype ^ "." ^ prop
+  | _ -> failwith "Unknown nondeterminism source"
+
 let is_nondet_ref = function
   | RHeap { objtype; prop } ->
       List.mem (objtype, prop) nondet_heap
@@ -58,22 +63,24 @@ let calculate_markings_for_event { has_dom_write; has_nondeterminism }
   let (dom, nondet) =
     fold_js_command (fun (dom, nondet) -> function
                        | Read (ref, _) when is_nondet_ref ref ->
-                           (dom, true)
+                           (dom, StringSet.add (nondet_string ref) nondet)
                        | Write (RDOMNode _, _)
                        | Write (RDOMNodeAttribute _, _)
                        | Write (RMemCell _, _)
                        | Write (RTree _, _) ->
                            (true, nondet)
                        | _ -> (dom, nondet))
-      event (false, false)
+      event (false, StringSet.empty)
   in { has_dom_write =
          if dom then IntSet.add id has_dom_write else has_dom_write;
        has_nondeterminism =
-         if nondet then IntSet.add id has_nondeterminism else
-           has_nondeterminism }
+         if StringSet.is_empty nondet then
+           has_nondeterminism
+         else
+           IntMap.add id nondet has_nondeterminism }
 
 let calculate_markings { events } =
   BatList.fold_left calculate_markings_for_event
-    { has_nondeterminism = IntSet.empty;
+    { has_nondeterminism = IntMap.empty;
       has_dom_write = IntSet.empty }
     events
