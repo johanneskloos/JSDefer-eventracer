@@ -469,7 +469,7 @@ let match_scope = function
   | "eh:key" -> EventHandler EHKey
   | "DOM Timer" -> TimerDOM
   | "unknown script" -> Script STunknown
-  | "sync script" -> Script STunknown
+  | "sync script" -> Script STsync
   | "async script" -> Script STasync
   | "defer script" -> Script STdefer
   | "inline script" -> Script STinline
