@@ -305,8 +305,7 @@ let initial_event_kind deps id { outstanding_animation_frames } =
              | None -> delay)
         deps id (-1)
     else -1
-  in Format.eprintf "Delay for %d: %d@." id delay;
-    if delay = 0 then
+  in if delay = 0 then
     Some ImmediateTimerEvent
   else if 0 < delay && delay < delay_cutoff then
     Some ShortTimerEvent

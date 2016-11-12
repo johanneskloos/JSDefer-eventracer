@@ -35,14 +35,12 @@ let add_edges hb po good g =
 let build_post_wait_graph trace classifier =
   let { events; deps } = trace
   in let js_tasks =
-    Format.eprintf "js_tasks@.";
     BatList.filter_map
       (fun { id } ->
          try if is_script (IntMap.find id classifier) then Some id else None
          with Not_found -> None)
       events
   in let post_graph =
-    Format.eprintf "post_graph@.";
     BatList.fold_left
       (fun g { id=src; commands } ->
          BatList.fold_left
@@ -52,9 +50,7 @@ let build_post_wait_graph trace classifier =
            (DependencyGraph.add_vertex g src) commands)
       DependencyGraph.empty events
   in let graph =
-    Format.eprintf "graph@.";
     BatList.fold_left PostWaitGraph.add_vertex PostWaitGraph.empty js_tasks
     |> add_edges deps post_graph js_tasks
-  in Format.eprintf "reduce@.";
-     Oper.transitive_reduction graph
+  in Oper.transitive_reduction graph
 
