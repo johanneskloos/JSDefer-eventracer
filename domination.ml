@@ -4,7 +4,8 @@ open ReducedOrderGraph
 type analysis_result = {
   dom_accesses: IntSet.t;
   inline_scripts: IntSet.t;
-  async_scripts: IntSet.t
+  async_scripts: IntSet.t;
+  nondet: StringSet.t
 }
 let pp_analysis_result pp { dom_accesses; inline_scripts; async_scripts } =
   let open Fmt in
@@ -27,13 +28,15 @@ module AnalysisStrategy = struct
   type g = DependencyGraph.t
   let direction = Graph.Fixpoint.Backward
   let join
-        { dom_accesses = d1;
+        { dom_accesses = d1; nondet = n1;
           inline_scripts = i1; async_scripts = a1 }
-        { dom_accesses = d2;
+        { dom_accesses = d2; nondet = n2;
           inline_scripts = i2; async_scripts = a2 } =
     { dom_accesses = IntSet.union d1 d2;
       inline_scripts = IntSet.union i1 i2;
-      async_scripts = IntSet.union a1 a2 }
+      async_scripts = IntSet.union a1 a2;
+      nondet = StringSet.union n1 n2
+    }
   let equal 
         { dom_accesses = d1;
           inline_scripts = i1; async_scripts = a1 }
@@ -56,13 +59,17 @@ let calculate_domination
     in let maybe_singleton s v =
       cond_singleton (IntSet.mem v s) v
     in DominationAnalysis.analyze
-      (fun v ->
-         let open ClassifyTask in
-         { dom_accesses = maybe_singleton has_dom_write v;
-           inline_scripts =
-             cond_singleton (IntMap.find v cl = InlineScript) v;
-           async_scripts =
-             cond_singleton (IntMap.find v cl = ExternalAsyncScript) v })
+         (fun v ->
+            let open ClassifyTask in
+              { dom_accesses = maybe_singleton has_dom_write v;
+                inline_scripts =
+                  cond_singleton (IntMap.find v cl = InlineScript) v;
+                async_scripts =
+                  cond_singleton (IntMap.find v cl = ExternalAsyncScript) v;
+                nondet =
+                  try IntMap.find v has_nondeterminism
+                  with Not_found -> StringSet.empty 
+              })
          depgraph
   with Not_found ->
     failwith "Not_found in calculate_domination"
@@ -71,7 +78,7 @@ type verdict =
     (* Deferable cases *)
     Deferable
   | Deferred
-    (* Non-deferable cases *)
+  (* Non-deferable cases *)
   | HasDOMAccess
   | IsInlineScript
   | IsAsyncScript
@@ -82,7 +89,7 @@ let verdict_to_string = function
     (* Deferable cases *)
     Deferable -> "deferable"
   | Deferred -> "already deferred"
-    (* Non-deferable cases *)
+  (* Non-deferable cases *)
   | HasDOMAccess -> "performs DOM write"
   | IsInlineScript -> "is an inline script"
   | IsAsyncScript -> "is an async script"
@@ -98,41 +105,41 @@ type result = {
 }
 let pp_result pp { verdict; nondet; data } =
   let open Fmt in
-  match verdict with
-    | DominatedByDOMAccess
-    | DominatedByAsyncScript
-    | DominatedByInlineScript ->
-        pf pp "%a%s: %a"
-          pp_verdict verdict
-          (if nondet then " (non-deterministic)" else "")
-          pp_analysis_result data
-    | _ ->
-        pf pp "%a%s"
-          pp_verdict verdict
-          (if nondet then " (non-deterministic)" else "")
+    match verdict with
+      | DominatedByDOMAccess
+      | DominatedByAsyncScript
+      | DominatedByInlineScript ->
+          pf pp "%a%s: %a"
+            pp_verdict verdict
+            (if nondet then " (non-deterministic)" else "")
+            pp_analysis_result data
+      | _ ->
+          pf pp "%a%s"
+            pp_verdict verdict
+            (if nondet then " (non-deterministic)" else "")
 
 let deferability_analysis cl { has_nondeterminism } dom =
   let open ClassifyTask in
-  IntMap.filter_map
-    (fun v vc ->
-       try
-         let ve = match vc with
-           | ExternalSyncScript ->
-               let { dom_accesses; inline_scripts; async_scripts } = dom v  in
-                 if IntSet.mem v dom_accesses then HasDOMAccess
-                 else if not (IntSet.is_empty dom_accesses) then DominatedByDOMAccess
-                 else if not (IntSet.is_empty inline_scripts) then DominatedByInlineScript
-                 else if not (IntSet.is_empty async_scripts) then DominatedByAsyncScript
-                 else Deferable
-           | ExternalAsyncScript -> IsAsyncScript
-           | ExternalDeferScript -> Deferred
-           | InlineScript -> IsInlineScript
-           | UnclearScript -> failwith "Unclear script type"
-           | _ -> raise Exit
-         in Some { verdict = ve; nondet = IntMap.mem v has_nondeterminism;
-                   data = dom v }
-       with Exit -> None | Not_found -> None)
-    cl
+    IntMap.filter_map
+      (fun v vc ->
+         try
+           let ve = match vc with
+             | ExternalSyncScript ->
+                 let { dom_accesses; inline_scripts; async_scripts } = dom v  in
+                   if IntSet.mem v dom_accesses then HasDOMAccess
+                   else if not (IntSet.is_empty dom_accesses) then DominatedByDOMAccess
+                   else if not (IntSet.is_empty inline_scripts) then DominatedByInlineScript
+                   else if not (IntSet.is_empty async_scripts) then DominatedByAsyncScript
+                   else Deferable
+             | ExternalAsyncScript -> IsAsyncScript
+             | ExternalDeferScript -> Deferred
+             | InlineScript -> IsInlineScript
+             | UnclearScript -> failwith "Unclear script type"
+             | _ -> raise Exit
+           in Some { verdict = ve; nondet = IntMap.mem v has_nondeterminism;
+                     data = dom v }
+         with Exit -> None | Not_found -> None)
+      cl
 
 let calculate_domination trace =
   let (trace, cl, data, data', dcl_pre, depgraph) =

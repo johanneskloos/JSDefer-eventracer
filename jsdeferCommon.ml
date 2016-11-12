@@ -75,13 +75,16 @@ let write_json def chan =
   let open Yojson.Basic in
   let intset_to_list s =
     `List (IntSet.fold (fun i l -> `Int i :: l) s [])
+  and stringset_to_list s =
+    `List (StringSet.fold (fun i l -> `String i :: l) s [])
   in let data =
-    `Assoc (IntMap.fold (fun id { verdict; nondet;
+    `Assoc (IntMap.fold (fun id { verdict;
                                   data = { dom_accesses; inline_scripts;
-                                           async_scripts } } l ->
+                                           async_scripts; nondet } } l ->
                            let data = 
                              `Assoc [
-                               ("nondet", `Bool nondet);
+                               ("nondet", `Bool (not (StringSet.is_empty nondet)));
+                               ("nondet_causes", stringset_to_list nondet);
                                ("verdict", `String (verdict_to_string verdict));
                                ("domdom", intset_to_list dom_accesses);
                                ("dominline", intset_to_list inline_scripts);
