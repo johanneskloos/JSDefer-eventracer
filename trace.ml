@@ -412,6 +412,10 @@ let match_scope_pats = let open Pcre in [
          state = MainResponse;
          name = get_substring sub 1
        });
+    (re "nondet - (.*)",
+     fun sub -> Nondet (get_substring sub 1));
+    (re "env - (.*)",
+     fun sub -> Env (get_substring sub 1));
     (re "auto:.*", fun _ -> failwith "Auto-exploation mode not supported");
     (re "([a-z\\d_]+):(.*)",
      fun sub ->

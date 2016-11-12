@@ -62,8 +62,10 @@ let calculate_markings_for_event { has_dom_write; has_nondeterminism }
       ({ id } as event) =
   let (dom, nondet) =
     fold_js_command (fun (dom, nondet) -> function
-                       | Read (ref, _) when is_nondet_ref ref ->
-                           (dom, StringSet.add (nondet_string ref) nondet)
+                       (*| Read (ref, _) when is_nondet_ref ref ->
+                           (dom, StringSet.add (nondet_string ref) nondet)*)
+                       | Enter (Env s | Nondet s) ->
+                           (dom, StringSet.add s nondet)
                        | Write (RDOMNode _, _)
                        | Write (RDOMNodeAttribute _, _)
                        | Write (RMemCell _, _)
