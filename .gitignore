@@ -8,3 +8,5 @@ _build
 collect-jobs
 traces_pb.ml
 traces_pb.mli
+examples
+testdata
