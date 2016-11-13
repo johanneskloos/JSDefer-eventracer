@@ -136,7 +136,9 @@ let deferability_analysis cl { has_nondeterminism } dom =
              | ExternalAsyncScript -> IsAsyncScript
              | ExternalDeferScript -> Deferred
              | InlineScript -> IsInlineScript
-             | UnclearScript -> failwith "Unclear script type"
+             | UnclearScript -> Logs.err ~src:!Log.source
+                                  (fun m -> m "Script %d has unclear script type, guessing inline" v);
+                                IsInlineScript
              | _ -> raise Exit
            in Some { verdict = ve; nondet = IntMap.mem v has_nondeterminism;
                      data = dom v }
