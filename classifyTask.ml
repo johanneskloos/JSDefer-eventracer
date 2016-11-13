@@ -222,9 +222,15 @@ let update_type_known outer_state inner_state cmd =
     | Enter JSDeclareFunction
     | Enter JSDeclareGlobalvar
     | Enter (JSCode { jstype = GlobalCode }) ->
-        Logs.err ~src:!Log.source
-          (fun m -> m "Entered top-level script code without surrounding script tag");
-        { inner_state with type_known = Some UnclearScript }
+        begin match inner_state.event_kind with
+            Some e ->
+              { inner_state with type_known = Some (from_event_type e) }
+          | None ->
+              Logs.err ~src:!Log.source
+                (fun m -> m "@[<v2>Can't classify script type (toplevel)@,inner state: @[<hov>%a@]@,outer state: @[<hov>%a@]@,@]@."
+                            pp_inner_state inner_state pp_state outer_state);
+              { inner_state with type_known = Some UnclearScript }
+        end
     | Enter JSExec _
     | Enter JSCall _
     | Enter JSCode _ ->
