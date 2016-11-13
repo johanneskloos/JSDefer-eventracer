@@ -350,6 +350,7 @@ let remove_junk { events; deps } =
   in loop deps events
 
 let classify trace =
+  Format.eprintf "Classifying tasks@.";
   let trace = remove_junk trace
   in (trace, (collect trace).classification)
 

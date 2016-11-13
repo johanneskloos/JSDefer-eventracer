@@ -86,6 +86,7 @@ let merge_last_writes ecur (_: reference) last_write write =
     | None -> last_write
 
 let dependency_graph trace =
+  Format.eprintf "Calculating dependency graph@.";
   let reads_writes = per_event_specification trace
   in let { graph } = IntMap.fold
        (fun ecur { reads; writes }

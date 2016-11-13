@@ -53,6 +53,7 @@ module DominationAnalysis =
 let calculate_domination
       { has_nondeterminism; has_dom_write } cl
       depgraph =
+  Format.eprintf "Calculating domination facts@.";
   try
     let cond_singleton p v =
       if p then IntSet.singleton v else IntSet.empty
@@ -119,6 +120,7 @@ let pp_result pp { verdict; nondet; data } =
             (if nondet then " (non-deterministic)" else "")
 
 let deferability_analysis cl { has_nondeterminism } dom =
+  Format.eprintf "Performing deferability analysis@.";
   let open ClassifyTask in
     IntMap.filter_map
       (fun v vc ->

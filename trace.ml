@@ -577,6 +577,7 @@ let pp_trace pp { events; deps } = let open Fmt in
   vbox (list ~sep:Fmt.cut pp_event) pp events
 
 let parse_trace { CleanLog.events; deps } =
+  Format.eprintf "Parsing trace@.";
   { deps; events = BatList.map parse_event events }
 
 let pp_event_with_deps deps pp { evtype; id; commands } =
