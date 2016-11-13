@@ -30,6 +30,8 @@ let run_analysis log file =
   JsdeferCommon.analyze log file
 
 let () =
+  Logs.set_reporter (Logs_fmt.reporter ());
+  Logs.set_level ~all:true (Some Logs.Info);
   let log = ref false
   and tasks = ref []
   and timeout = ref None in
@@ -38,6 +40,7 @@ let () =
     ("-L", Arg.Set log, "log file");
     ("-n", Arg.Set_int task_pool_max, "number of parallel tasks");
     ("-t", Arg.Int (fun n -> timeout := Some n), "timeout (in seconds)");
+    ("-D", Arg.Unit (fun () -> Logs.set_level ~all:true (Some Logs.Debug)), "enable debugging output");
     ("-T", Arg.Unit (fun () -> timeout := None), "no timeout")
   ] (fun task -> tasks := task :: !tasks) "";
   Sys.set_signal Sys.sigchld (Sys.Signal_handle chldhandler);
