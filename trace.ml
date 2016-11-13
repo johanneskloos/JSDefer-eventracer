@@ -250,7 +250,7 @@ let is_javascript_scope = function
   | JSExecuteScript -> true
   | _ -> false
 
-let re s = let open Pcre in regexp ~study:true ~flags:[`ANCHORED; `UTF8] s
+let re s = let open Pcre in regexp ~study:true ~flags:[`ANCHORED] s
 let fre f = Format.ksprintf re f
 let pointer_of_string s = 
   try Int64.of_string s with _ -> failwith ("Can't parse int64 " ^ s)
@@ -575,9 +575,23 @@ type trace = {
 let pp_trace pp { events; deps } = let open Fmt in
   vbox (list ~sep:Fmt.cut pp_event) pp events
 
+let pp_pcre_error pp = let open Pcre in let open Fmt in function
+  | Partial -> string pp "String only matched the pattern partially"
+  | BadPartial -> string pp "Patterns contains iterms that cannot be used together with partial matching"
+  | BadPattern (msg, pos) -> pf pp "Regular expression is malformed: %s at %d" msg pos
+  | BadUTF8 -> string pp "Invalid UTF8 string"
+  | BadUTF8Offset -> string pp "Invalid UTF8 string offset"
+  | MatchLimit -> string pp "Maximum allowed number of match attempts with backtracking or recursion reached"
+  | RecursionLimit -> string pp "Recursion limit reached"
+  | InternalError e -> string pp e
+
 let parse_trace { CleanLog.events; deps } =
   Logs.debug ~src:!Log.source (fun m -> m "Parsing trace");
-  { deps; events = BatList.map parse_event events }
+  try
+    { deps; events = BatList.map parse_event events }
+  with Pcre.Error err as e ->
+    Logs.err (fun m -> m "PCRE error: %a" pp_pcre_error err);
+    raise e
 
 let pp_event_with_deps deps pp { evtype; id; commands } =
   let open Fmt in
