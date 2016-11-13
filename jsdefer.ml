@@ -29,8 +29,17 @@ let run_analysis log file =
   Log.set_source_for_file file;
   JsdeferCommon.analyze log file
 
+let improved_reporter () =
+  let report (src: Logs.src) (level: Logs.level) ~over k msgf =
+    let k _ = over (); k () in
+      msgf @@ fun ?header ?tags fmt ->
+      Format.kfprintf k Fmt.stdout ("%a %s: @[" ^^ fmt ^^ "@]@.")
+        Logs.pp_header (level, header)
+        (Logs.Src.name src)
+  in { Logs.report }
+
 let () =
-  Logs.set_reporter (Logs_fmt.reporter ());
+  Logs.set_reporter (improved_reporter ());
   Logs.set_level ~all:true (Some Logs.Info);
   let log = ref false
   and tasks = ref []
