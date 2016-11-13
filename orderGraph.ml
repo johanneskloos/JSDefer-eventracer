@@ -29,14 +29,15 @@ let warn_read_incompatibility v1 v2 =
   match v1, v2 with
     | None, _ -> ()
     | Some v1, None ->
-        Format.eprintf
-          "Warning: Reading specific value %a from undetermined read@."
-          pp_value v1
+        Logs.warn ~src:!Log.source
+          (fun m -> m "Warning: Reading specific value %a from undetermined read"
+                      pp_value v1)
     | Some v1, Some v2 ->
         if v1 <> v2 then
-          Format.eprintf
-            "Warning: Nondeterministic read, got both %a and %a@."
-            pp_value v1 pp_value v2
+        Logs.warn ~src:!Log.source
+          (fun m -> m "Warning: Nondeterministic read, got both %a and %a"
+            pp_value v1 pp_value v2)
+
 
 let guid_heuristic = ref false
 
@@ -86,7 +87,7 @@ let merge_last_writes ecur (_: reference) last_write write =
     | None -> last_write
 
 let dependency_graph trace =
-  Format.eprintf "Calculating dependency graph@.";
+  Logs.debug ~src:!Log.source (fun m -> m "Calculating dependency graph");
   let reads_writes = per_event_specification trace
   in let { graph } = IntMap.fold
        (fun ecur { reads; writes }

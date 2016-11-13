@@ -333,7 +333,6 @@ let match_value_pats =
      fun sub -> VDOMTimer (pointer_of_string (get_substring sub 1)));
     (re "(.*)",
      fun sub -> begin let s = get_substring sub 1 in
-       (*Format.eprintf "Got unquoted string '%s'" s;*)
        Vstring s end)
   ]
 
@@ -577,7 +576,7 @@ let pp_trace pp { events; deps } = let open Fmt in
   vbox (list ~sep:Fmt.cut pp_event) pp events
 
 let parse_trace { CleanLog.events; deps } =
-  Format.eprintf "Parsing trace@.";
+  Logs.debug ~src:!Log.source (fun m -> m "Parsing trace");
   { deps; events = BatList.map parse_event events }
 
 let pp_event_with_deps deps pp { evtype; id; commands } =

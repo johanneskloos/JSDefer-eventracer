@@ -82,7 +82,7 @@ let calculate_markings_for_event { has_dom_write; has_nondeterminism }
            IntMap.add id nondet has_nondeterminism }
 
 let calculate_markings { events } =
-  Format.eprintf "Calculating markings@.";
+  Logs.debug ~src:!Log.source (fun m -> m "Calculating markings");
   BatList.fold_left calculate_markings_for_event
     { has_nondeterminism = IntMap.empty;
       has_dom_write = IntSet.empty }

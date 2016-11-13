@@ -125,8 +125,8 @@ let update_animation_requests (outer_state, inner_state) = function
   | Read (RHeap { id } , _)
       when List.mem id outer_state.animation_frame_request_functions ->
       if inner_state.type_known = None then
-        Format.eprintf
-          "Warning: Saw potential animation request outside JS code@.";
+        Logs.warn ~src:!Log.source
+          (fun m -> m "Warning: Saw potential animation request outside JS code");
       (outer_state,
        { inner_state with potential_animation_request = true })
   | Read (RHeap { objtype = "Window";
@@ -164,7 +164,9 @@ let find_event_type = function
   | "loadstart" | "open" | "rejectionhandled" | "unhandledrejection"
   | "CookieEventAPI" | "readystatechange" | "Resolved"
   | "wtBeaconSent" -> ResourceEvent
-  | s -> Format.eprintf "Unknown event type %s, guessing UI@." s;
+  | s -> 
+      Logs.warn ~src:!Log.source
+        (fun m -> m "Unknown event type %s, guessing U." s);
          UIEvent
 
 let update_event_kind inner_state cmd =
@@ -220,7 +222,8 @@ let update_type_known outer_state inner_state cmd =
     | Enter JSDeclareFunction
     | Enter JSDeclareGlobalvar
     | Enter (JSCode { jstype = GlobalCode }) ->
-        Format.eprintf "Entered top-level script code without surrounding script tag@.";
+        Logs.err ~src:!Log.source
+          (fun m -> m "Entered top-level script code without surrounding script tag");
         { inner_state with type_known = Some UnclearScript }
     | Enter JSExec _
     | Enter JSCall _
@@ -229,8 +232,9 @@ let update_type_known outer_state inner_state cmd =
             Some e ->
               { inner_state with type_known = Some (from_event_type e) }
           | None ->
-              Format.eprintf "@[<v2>Can't classify script type (reference)@,inner state: @[<hov>%a@]@,outer state: @[<hov>%a@]@,@]@."
-                pp_inner_state inner_state pp_state outer_state;
+              Logs.err ~src:!Log.source
+                (fun m -> m "@[<v2>Can't classify script type (reference)@,inner state: @[<hov>%a@]@,outer state: @[<hov>%a@]@,@]@."
+                            pp_inner_state inner_state pp_state outer_state);
               { inner_state with type_known = Some UnclearScript }
         end
     | _ -> inner_state
@@ -350,7 +354,7 @@ let remove_junk { events; deps } =
   in loop deps events
 
 let classify trace =
-  Format.eprintf "Classifying tasks@.";
+  Logs.debug ~src:!Log.source (fun m -> m "Classifying tasks");
   let trace = remove_junk trace
   in (trace, (collect trace).classification)
 

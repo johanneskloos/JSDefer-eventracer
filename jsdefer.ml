@@ -25,6 +25,10 @@ let drain () =
 
 let chldhandler (_: int) = decr task_pool_size
 
+let run_analysis log file =
+  Log.set_source_for_file file;
+  JsdeferCommon.analyze log file
+
 let () =
   let log = ref false
   and tasks = ref []
@@ -37,5 +41,5 @@ let () =
     ("-T", Arg.Unit (fun () -> timeout := None), "no timeout")
   ] (fun task -> tasks := task :: !tasks) "";
   Sys.set_signal Sys.sigchld (Sys.Signal_handle chldhandler);
-  List.iter (fun fn -> start_task !timeout (JsdeferCommon.analyze log) fn) !tasks;
+  List.iter (fun fn -> start_task !timeout (run_analysis log) fn) !tasks;
   drain ()

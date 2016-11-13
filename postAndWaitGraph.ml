@@ -33,7 +33,7 @@ let add_edges hb po good g =
     |> add_edges_for PostWaitEdge.HB hb good
 
 let build_post_wait_graph trace classifier =
-  Format.eprintf "Building post/wait graph@.";
+  Logs.debug ~src:!Log.source (fun m -> m "Building post/wait graph");
   let { events; deps } = trace
   in let js_tasks =
     BatList.filter_map
