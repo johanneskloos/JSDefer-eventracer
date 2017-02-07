@@ -12,12 +12,24 @@ module PostWaitGraph =
 module Oper = Graph.Oper.P(PostWaitGraph)
 
 let add_successors lbl r v good g =
+  Logs.debug ~src:!Log.source (fun m -> m "Sucessors for %d" v);
+  let seen = Hashtbl.create 17 in
   let rec search (g: PostWaitGraph.t) = function
     | v'::tasks ->
-        if Hashtbl.mem good v' then
-          search (PostWaitGraph.add_edge_e g (v, lbl, v')) tasks
-        else
-          search g (DependencyGraph.succ r v' @ tasks)
+        if Hashtbl.mem seen v' then begin
+          Logs.debug ~src:!Log.source
+            (fun m -> m "Skipping %d, it has been seen before" v');
+          g
+        end else begin
+          Hashtbl.add seen v' ();
+          if Hashtbl.mem good v' then begin
+            Logs.debug ~src:!Log.source
+              (fun m -> m "Reached %d, #remaining tasks: %d"
+                          v' (List.length tasks));
+            search (PostWaitGraph.add_edge_e g (v, lbl, v')) tasks
+          end else
+            search g (DependencyGraph.succ r v' @ tasks)
+        end
     | [] -> g
   in search g (DependencyGraph.succ r v)
 
