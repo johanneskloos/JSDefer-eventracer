@@ -1,14 +1,9 @@
 open Trace
 
-let trace_cache = Hashtbl.create 31
 
-let load_trace_if_needed hostname =
-  try
-    Hashtbl.find trace_cache hostname
-  with Not_found ->
-    let trace = load_trace (hostname ^ ".log")
-    in Hashtbl.add trace_cache hostname trace;
-       trace
+let load_trace_if_needed =
+  BatCache.lru_cache ~gen:(fun hostname -> load_trace (hostname ^ ".log"))
+    ~cap:2
 
 let find_url hostname script { commands } =
   let rec find_source saw_type = function
