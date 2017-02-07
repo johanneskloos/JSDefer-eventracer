@@ -567,10 +567,18 @@ let parse_event { CleanLog.evtype; id; commands } =
     commands = BatList.map parse_command commands }
 
 module DependencyGraph = CleanLog.DependencyGraph
+type race_info = {
+  ev1: int;
+  ev2: int;
+  cmd1: int;
+  cmd2: int;
+  var: int
+}
 
 type trace = {
   events: event list;
-  deps: DependencyGraph.t
+  deps: DependencyGraph.t;
+  races: race_info list
 }
 let pp_trace pp { events; deps } = let open Fmt in
   vbox (list ~sep:Fmt.cut pp_event) pp events
@@ -585,10 +593,19 @@ let pp_pcre_error pp = let open Pcre in let open Fmt in function
   | RecursionLimit -> string pp "Recursion limit reached"
   | InternalError e -> string pp e
 
-let parse_trace { CleanLog.events; deps } =
+let parse_trace { CleanLog.events; deps; races } =
   Logs.debug ~src:!Log.source (fun m -> m "Parsing trace");
   try
-    { deps; events = BatList.map parse_event events }
+      { deps; events = BatList.map parse_event events;
+      races =
+        let open EventRacer in
+          BatList.filter_map
+          (fun { ri_event1; ri_event2; ri_cmd1; ri_cmd2; ri_var; ri_covered } ->
+              if ri_covered = -1 then
+                  Some { ev1 = ri_event1; ev2 = ri_event2; cmd1 = ri_cmd1;
+                  cmd2 = ri_cmd2; var = ri_var }
+              else None)
+          races }
   with Pcre.Error err as e ->
     Logs.err (fun m -> m "PCRE error: %a" pp_pcre_error err);
     raise e

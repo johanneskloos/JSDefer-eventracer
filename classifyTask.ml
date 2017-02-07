@@ -350,13 +350,13 @@ let has_proper_parse_html { commands } =
                     | _ -> false)
     commands
 
-let remove_junk { events; deps } =
+let remove_junk { events; deps; races } =
   let rec loop deps = function
     | (event :: _) as events when has_proper_parse_html event ->
-        { events; deps }
+        { events; deps; races }
     | { id } :: events ->
         loop (DependencyGraph.remove_vertex deps id) events
-    | [] -> { events = []; deps = DependencyGraph.empty }
+    | [] -> { events = []; deps = DependencyGraph.empty; races = [] }
   in loop deps events
 
 let classify trace =
