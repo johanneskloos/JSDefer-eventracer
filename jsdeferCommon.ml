@@ -40,7 +40,7 @@ let str_provenance = function
 let pp_provenance = Fmt.using str_provenance Fmt.string
 type summary = {
   script_provenance: provenance;
-  script_verdict: Domination.result;
+  script_verdict: Deferability.result;
   has_dom_writes: bool;
   has_potential_nondeterminism: StringSet.t;
   assumed_deterministic: bool;
@@ -64,7 +64,7 @@ let pp_summary pp { script_provenance; script_verdict; has_dom_writes;
                     potential_races } =
   Fmt.pf pp "%a@,%a@,Has DOM writes: %b@,Non-determinism: %a@,Races: %a@,"
     pp_provenance script_provenance
-    Domination.pp_verdict script_verdict.Domination.verdict
+    Deferability.pp_verdict script_verdict.Deferability.verdict
     has_dom_writes
     pp_determinism (has_potential_nondeterminism, assumed_deterministic)
     Races.pp_races potential_races
@@ -113,7 +113,7 @@ type page_summary = {
 
 let calculate_deferables per_script =
   IntMap.fold (fun script { script_provenance; script_verdict } defs ->
-                 if script_verdict.Domination.verdict = Domination.Deferable then
+                 if script_verdict.Deferability.verdict = Deferability.Deferable then
                    (script, script_provenance) :: defs
                  else
                    defs)
@@ -150,7 +150,7 @@ let short_str_provenance = function
   | ScriptAsynchronous src -> "async " ^ src
   | ScriptDeferred src -> "defer " ^ src
   | ScriptOther src -> "other " ^ src
-let short_str_verdict = let open Domination in function
+let short_str_verdict = let open Deferability in function
   | Deferable -> "deferable"
   | Deferred -> "deferred"
   | HasDOMAccess -> "DOM access"
@@ -170,7 +170,7 @@ let make_row name id { script_provenance; script_verdict; has_dom_writes;
       name;
       string_of_int id;
       short_str_provenance script_provenance;
-      short_str_verdict script_verdict.Domination.verdict;
+      short_str_verdict script_verdict.Deferability.verdict;
       if has_dom_writes then "has DOM writes!" else "-";
       if assumed_deterministic then "assumed deterministic!" else "-";
       strf "@[<h>%a@]" (iter ~sep:sp StringSet.iter string) has_potential_nondeterminism;
@@ -203,11 +203,11 @@ let calculate_and_write_analysis log use_det base intrace indet makeoutput =
       load_determinism_facts indet
     else
       IntSet.empty
-  in let { Domination.trace; classification; has_dom_write; has_nondeterminism; potential_races;
+  in let { Deferability.trace; classification; has_dom_write; has_nondeterminism; potential_races;
            dependency_graph; verdicts } =
     CleanLog.load intrace
     |> Trace.parse_trace
-    |> Domination.calculate_domination deterministic_scripts
+    |> Deferability.calculate_deferability deterministic_scripts
   in let summary =
     summarize base deterministic_scripts trace classification has_dom_write has_nondeterminism potential_races dependency_graph verdicts
   in

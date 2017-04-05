@@ -93,6 +93,7 @@ let merge_successors_scripts races scripts cl data =
          data)
     scripts data
 
+    (*
 let find_dcl_and_onload cl scripts =
   let open ClassifyTask in
   IntSet.filter (fun v -> match IntMap.find v cl with
@@ -102,6 +103,8 @@ let find_dcl_and_onload cl scripts =
     scripts
     |> IntSet.to_list
 
+     *)
+    (*
 let merge_post_dcl scripts cl data =
   let open ClassifyTask in
   let dcl_and_onload = find_dcl_and_onload cl scripts
@@ -113,6 +116,7 @@ let merge_post_dcl scripts cl data =
         let { spec } = BatList.fold_left (merge_successor v) data vs in
           (IntMap.find v spec).ReadsWrites.reads
     | [] -> ReferenceMap.empty
+     *)
 
 let filter_graph p g =
   let open PostAndWaitGraph in
@@ -137,12 +141,11 @@ let reduce races scripts cl data =
   let data' = merge_successors_scripts races scripts cl data
   in Logs.debug ~src:!Log.source (fun m -> m "@[<hov 4>Races: %a@]"
                                              Races.pp_races data'.potential_races);
-    (merge_post_dcl scripts cl data',
       filter_irrelevant
         (IntSet.filter
            (fun v -> ClassifyTask.is_toplevel_script
                        (IntMap.find v cl))
-           scripts) data')
+           scripts) data'
 
 let find_scripts cl =
   Logs.debug ~src:!Log.source (fun m -> m "Finding scripts");
@@ -164,7 +167,7 @@ let calculate trace =
                   spec; po; potential_races = Races.RaceSet.empty;
                   script_short_timeouts = [];
                   dependency_graph = DependencyGraph.empty }
-  in let (_, data') = reduce trace.races scripts cl data
+  in let data' = reduce trace.races scripts cl data
   in let depgraph = CalculateRFandMO.calculate_dependency_graph data'.spec
   in { data with dependency_graph = depgraph }
 
