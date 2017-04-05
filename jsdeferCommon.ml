@@ -1,7 +1,6 @@
 open ClassifyTask
 open Trace
 open ReducedOrderGraph
-open ClassificationLayout
 open Domination
 
 let with_out_file filename f =
@@ -270,7 +269,7 @@ let pp_defer pp { deferables } =
       pp deferables
 
 let calculate_and_write_analysis log use_det base intrace indet makeoutput =
-  if !log then ReducedOrderGraph.log (open_out (makeoutput ".details"));
+  if !log then DetailLog.open_log (open_out (makeoutput ".details"));
   let deterministic_scripts =
     if use_det && Sys.file_exists indet then
       load_determinism_facts indet
