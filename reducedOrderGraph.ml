@@ -21,10 +21,13 @@ type trace_facts = {
 }
 
 module MergePO = Graph.Merge.P(PostAndWaitGraph.PostWaitGraph)
-let merge_successor pre ({ has_nondeterminism; has_dom_write; spec; po } as data) succ =
+let merge_successor pre
+      ({ has_nondeterminism; has_dom_write; spec; po } as data) succ =
   log_red pre succ;
   let merge_intset set =
-    if IntSet.mem succ set then IntSet.add pre (IntSet.remove succ set) else set
+    if IntSet.mem succ set
+    then IntSet.add pre (IntSet.remove succ set)
+    else set
   and merge_nondet map =
     match IntMap.Exceptionless.find succ map with
       | Some nondet ->
@@ -80,7 +83,8 @@ let merge_successors_for races v cl data =
   and script_short_timeouts = short_timeouts @ data.script_short_timeouts
   in log_succs "script (immediate)" v immediates;
      Log.debug
-       (fun m -> m "@[<hov 4>potential races: %a]" Races.pp_races potential_races);
+       (fun m -> m "@[<hov 4>potential races: %a]"
+                   Races.pp_races potential_races);
     BatList.fold_left (merge_successor v)
        { data with potential_races; script_short_timeouts } immediates
 
@@ -109,7 +113,8 @@ let merge_post_dcl scripts cl data =
   let open ClassifyTask in
   let dcl_and_onload = find_dcl_and_onload cl scripts
   and pred v = true
-  in let succs = IntSet.to_list(gather_post_successors_set pred data.po dcl_and_onload) 
+  in let succs =
+     IntSet.to_list(gather_post_successors_set pred data.po dcl_and_onload) 
   in match succs  with
     | v::vs ->
         log_succs "DCL" v vs;
@@ -132,15 +137,17 @@ let filter_irrelevant scripts
       ({ has_dom_write; has_nondeterminism; spec; po } as data) =
   { data with
     has_dom_write = IntSet.inter has_dom_write scripts;
-    has_nondeterminism = IntMap.filter (fun v _ -> IntSet.mem v scripts) has_nondeterminism;
+    has_nondeterminism =
+      IntMap.filter (fun v _ -> IntSet.mem v scripts) has_nondeterminism;
     spec = IntMap.filter (fun v _ -> IntSet.mem v scripts) spec;
     po = filter_graph (fun v -> IntSet.mem v scripts) po }
 
 let reduce races scripts cl data =
   Log.debug (fun m -> m "Reducing scripts");
   let data' = merge_successors_scripts races scripts cl data
-  in Log.debug (fun m -> m "@[<hov 4>Races: %a@]"
-                                             Races.pp_races data'.potential_races);
+  in Log.debug
+       (fun m -> m "@[<hov 4>Races: %a@]"
+                   Races.pp_races data'.potential_races);
       filter_irrelevant
         (IntSet.filter
            (fun v -> ClassifyTask.is_toplevel_script

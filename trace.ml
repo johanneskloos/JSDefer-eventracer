@@ -65,13 +65,17 @@ end
 let pp_reference pp = let open Fmt in function
     | RHeap { objtype; id; prop } -> pf pp "%s[%d].%s" objtype id prop
     | RDOMNode p -> pf pp "NodeTree:0x%Lx" p
-    | RScriptRunner { runner; element } -> pf pp "ScriptRunner-%Lx-%Lx" runner element
+    | RScriptRunner { runner; element } ->
+      pf pp "ScriptRunner-%Lx-%Lx" runner element
     | REventHandler p -> pf pp "Event[0x%Lx]" p
     | RTree { scope; id } -> pf pp "Tree[0x%Lx]:%s" scope id
-    | RDOMNodeAttribute { node; attribute } -> pf pp "DOMNode[%Lx].%s" node attribute
-    | RCachedResource { resource; client } -> pf pp "CachedResource-%Lx-%Lx" resource client
+    | RDOMNodeAttribute { node; attribute } ->
+      pf pp "DOMNode[%Lx].%s" node attribute
+    | RCachedResource { resource; client } ->
+      pf pp "CachedResource-%Lx-%Lx" resource client
     | RTimer id -> pf pp "Timer:%d" id
-    | RNodeEvent { nodetype; node; handler } -> pf pp "%s[%Lx].%s" nodetype node handler
+    | RNodeEvent { nodetype; node; handler } ->
+      pf pp "%s[%Lx].%s" nodetype node handler
     | RArrayCell { id; index } -> pf pp "Array[%d]$[%d]" id index
     | RArrayLength id -> pf pp "Array[%d]$LEN" id
     | RMemCell { base; prop } -> pf pp "[%Lx].%s" base prop
@@ -157,7 +161,7 @@ let document_event_str = function
 let pp_document_event = Fmt.using document_event_str Fmt.string
 
 type event_queue_scope = EQDispatch | EQLoadEventDelay | EQEventQueue
-  [@@deriving ord]
+[@@deriving ord]
 let event_queue_scope_str = function
   | EQDispatch -> "dispatch-event"
   | EQLoadEventDelay -> "load_event_delay"
@@ -269,7 +273,8 @@ let rec match_first s = function
     with Not_found -> match_first s more
 let match_reference_pats =
   let open Pcre in [
-    (re "([\\p{L}\\p{Nl}$_][\\p{L}\\p{Nl}\\p{Nd}\\p{Mn}\\p{Mc}\\p{Pc}$_]*)\\[(-?\\d+)\\]\\.(.*)",
+    (re ("([\\p{L}\\p{Nl}$_][\\p{L}\\p{Nl}\\p{Nd}\\p{Mn}\\p{Mc}\\p{Pc}$_]*)" ^
+         "\\[(-?\\d+)\\]\\.(.*)"),
      fun sub -> RHeap {
          objtype = get_substring sub 1;
          id = int_of_string (get_substring sub 2);
@@ -327,7 +332,8 @@ let match_value_pats =
   let open Pcre in [
     (re "(-?\\d+)", fun sub -> Vint (Int32.of_string (get_substring sub 1)));
     (re "\"(.*)\"", fun sub -> Vstring (get_substring sub 1));
-    (re "([\\p{L}\\p{Nl}$_][\\p{L}\\p{Nl}\\{Nd}\\p{Mn}\\p{Mc}\\p{Pc}$_]*)\\[(-?\\d+)\\]",
+    (re ("([\\p{L}\\p{Nl}$_][\\p{L}\\p{Nl}\\{Nd}\\p{Mn}\\p{Mc}\\p{Pc}$_]*)" ^
+         "\\[(-?\\d+)\\]"),
      fun sub -> VObject {
          objtype = get_substring sub 1;
          id = int_of_string (get_substring sub 2)
@@ -340,7 +346,7 @@ let match_value_pats =
      fun sub -> VDOMTimer (pointer_of_string (get_substring sub 1)));
     (re "(.*)",
      fun sub -> begin let s = get_substring sub 1 in
-       Vstring s end)
+         Vstring s end)
   ]
 
 let match_value s =
@@ -381,7 +387,7 @@ let match_scope_pats = let open Pcre in [
          lstart = int_of_string (get_substring sub 3);
          lend = int_of_string (get_substring sub 4);
          source = get_substring sub 5 ^ "...";
-	 impl = Int64.of_int 0
+         impl = Int64.of_int 0
        });
     (re ("Call \\(fn=(-?\\d+) #(-?\\d+)\\) line (-?\\d+)-(-?\\d+) (.*?)"),
      fun sub -> JSCall {
@@ -390,7 +396,7 @@ let match_scope_pats = let open Pcre in [
          lstart = int_of_string (get_substring sub 3);
          lend = int_of_string (get_substring sub 4);
          source = get_substring sub 5 ^ "...";
-	 impl = Int64.of_int 0
+         impl = Int64.of_int 0
        });
     (re "JS\\[(.*?)\\]:(.*)",
      fun sub -> JSCode {
@@ -490,17 +496,20 @@ let match_scope = function
 let parse_value = let open EventRacer in function
     | None -> Vunknown
     | Some s ->
-      try match_value s with Not_found -> failwith ("Cannot parse value '" ^ s ^ "'")
+      try match_value s with Not_found ->
+        failwith ("Cannot parse value '" ^ s ^ "'")
 
 let parse_reference = let open EventRacer in function
     | None -> Runknown
     | Some s ->
-      try match_reference s with Not_found -> failwith ("Cannot parse reference " ^ s)
+      try match_reference s with Not_found ->
+        failwith ("Cannot parse reference " ^ s)
 
 let parse_scope = let open EventRacer in function
     | None -> SUnknown
     | Some s ->
-      try match_scope s with Not_found -> failwith ("Cannot parse scope " ^ s)
+      try match_scope s with Not_found ->
+        failwith ("Cannot parse scope " ^ s)
 
 type command =
   | Read of reference * value
@@ -595,27 +604,31 @@ let pp_trace pp { events; deps } = let open Fmt in
 let show_trace = Fmt.to_to_string pp_trace
 
 let pp_pcre_error pp = let open Pcre in let open Fmt in function
-  | Partial -> string pp "String only matched the pattern partially"
-  | BadPartial -> string pp "Patterns contains iterms that cannot be used together with partial matching"
-  | BadPattern (msg, pos) -> pf pp "Regular expression is malformed: %s at %d" msg pos
-  | BadUTF8 -> string pp "Invalid UTF8 string"
-  | BadUTF8Offset -> string pp "Invalid UTF8 string offset"
-  | MatchLimit -> string pp "Maximum allowed number of match attempts with backtracking or recursion reached"
-  | RecursionLimit -> string pp "Recursion limit reached"
-  | InternalError e -> string pp e
+    | Partial ->
+      string pp "String only matched the pattern partially"
+    | BadPartial ->
+      string pp "Patterns contains items incompatible with partial matching"
+    | BadPattern (msg, pos) ->
+      pf pp "Regular expression is malformed: %s at %d" msg pos
+    | BadUTF8 -> string pp "Invalid UTF8 string"
+    | BadUTF8Offset -> string pp "Invalid UTF8 string offset"
+    | MatchLimit ->
+      string pp "Maximum allowed number of match attempts reached"
+    | RecursionLimit -> string pp "Recursion limit reached"
+    | InternalError e -> string pp e
 
 let parse_trace { CleanLog.events; deps; races } =
   Log.debug (fun m -> m "Parsing trace");
   try
-      { deps; events = BatList.map parse_event events;
+    { deps; events = BatList.map parse_event events;
       races =
         let open EventRacer in
-          BatList.filter_map
+        BatList.filter_map
           (fun { ri_event1; ri_event2; ri_cmd1; ri_cmd2; ri_var; ri_covered } ->
-              if ri_covered = None then
-                  Some { ev1 = ri_event1; ev2 = ri_event2; cmd1 = ri_cmd1;
-                  cmd2 = ri_cmd2; var = parse_reference ri_var }
-              else None)
+             if ri_covered = None then
+               Some { ev1 = ri_event1; ev2 = ri_event2; cmd1 = ri_cmd1;
+                      cmd2 = ri_cmd2; var = parse_reference ri_var }
+             else None)
           races }
   with Pcre.Error err as e ->
     Log.err (fun m -> m "PCRE error: %a" pp_pcre_error err);

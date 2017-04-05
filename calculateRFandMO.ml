@@ -15,14 +15,12 @@ let warn_read_incompatibility v1 v2 =
   match v1, v2 with
     | None, _ -> ()
     | Some v1, None ->
-        Log.warn
-          (fun m -> m "Warning: Reading specific value %a from undetermined read"
-                      pp_value v1)
+        Log.warn (fun m -> m "Reading specific value %a from undetermined read"
+                             pp_value v1)
     | Some v1, Some v2 ->
         if v1 <> v2 then
-          Log.warn
-            (fun m -> m "Warning: Nondeterministic read, got both %a and %a"
-                        pp_value v1 pp_value v2)
+          Log.warn (fun m -> m "Nondeterministic read, got both %a and %a"
+                               pp_value v1 pp_value v2)
 
 
 let add_rf_edge last_writes ecur ref v1 graph =
@@ -46,9 +44,10 @@ let add_mo_edges dependent_reads ecur ref v1 graph =
                 (* Dummy write, don't care *)
                 graph
             | _ ->
-                BatList.fold_left (fun graph edep ->
-                                     log_add_edge "mo" ref edep ecur;
-                                     DependencyGraph.add_edge graph edep ecur)
+                BatList.fold_left
+                  (fun graph edep ->
+                     log_add_edge "mo" ref edep ecur;
+                     DependencyGraph.add_edge graph edep ecur)
                   graph deps
       with Not_found -> graph
 

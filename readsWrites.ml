@@ -30,7 +30,9 @@ let per_event_reads commands =
                 | Some value' ->
                     Log.warn
                       (fun m -> m "Non-deterministic reading of %a: %a vs. %a"
-                                  pp_reference ref pp_value value pp_value value');
+                                  pp_reference ref
+                                  pp_value value
+                                  pp_value value');
                     None)
              reads
        | Write (Runknown, _) ->

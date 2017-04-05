@@ -27,10 +27,12 @@ let pp_determinism pp = function
   | (nondet, false) when StringSet.is_empty nondet ->
       Fmt.string pp "Deterministic"
   | (nondet, true) ->
-      Fmt.pf pp "Explicitly assumed deterministic, in view of the following: %a"
+      Fmt.pf pp
+        "Explicitly assumed deterministic, in view of the following: %a"
         (Fmt.iter StringSet.iter Fmt.string) nondet
   | (nondet, false) ->
-      Fmt.pf pp "Inferred as non-deterministic, in view of the following: %a"
+      Fmt.pf pp
+        "Inferred as non-deterministic, in view of the following: %a"
         (Fmt.iter StringSet.iter Fmt.string) nondet
 
 let pp_summary pp { script_provenance; script_verdict; has_dom_writes;
@@ -49,20 +51,23 @@ let lookup_url trace script =
   in let rec find = function
     | Enter (JSCode { source }) :: _ -> source
     | _ :: rest -> find rest
-    | [] -> Log.err (fun k -> k "Can't find URL for script %d, adding dummy" script);
+    | [] -> Log.err
+              (fun k -> k "Can't find URL for script %d, adding dummy" script);
             "<unknown>"
   in find commands
 
-let summarize_one assumed trace cl has_dom_write has_nondeterminism potential_races script result =
+let get_provenance trace script = let open ClassifyTask in function
+  | InlineScript -> ScriptInline
+  | ExternalSyncScript -> ScriptSynchronous (lookup_url trace script)
+  | ExternalAsyncScript -> ScriptAsynchronous (lookup_url trace script)
+  | ExternalDeferScript -> ScriptDeferred (lookup_url trace script)
+  | ExternalUnknownScript -> ScriptOther (lookup_url trace script)
+  | _ -> assert false
+let summarize_one assumed trace cl has_dom_write has_nondeterminism
+      potential_races script result =
   let script_class = IntMap.find script cl in
     assert (ClassifyTask.is_toplevel_script script_class);
-    let script_provenance = match script_class with
-      | ClassifyTask.InlineScript -> ScriptInline
-      | ClassifyTask.ExternalSyncScript -> ScriptSynchronous (lookup_url trace script)
-      | ClassifyTask.ExternalAsyncScript -> ScriptAsynchronous (lookup_url trace script)
-      | ClassifyTask.ExternalDeferScript -> ScriptDeferred (lookup_url trace script)
-      | ClassifyTask.ExternalUnknownScript -> ScriptOther (lookup_url trace script)
-      | _ -> assert false
+    let script_provenance = get_provenance  trace script script_class
     and script_verdict = result
     and has_dom_writes = IntSet.mem script has_dom_write
     and assumed_deterministic = IntSet.mem script assumed
@@ -86,8 +91,9 @@ type page_summary = {
 }
 
 let calculate_deferables per_script =
+  let open Deferability in
   IntMap.fold (fun script { script_provenance; script_verdict } defs ->
-                 if script_verdict.Deferability.verdict = Deferability.Deferable then
+                 if script_verdict.verdict = Deferable then
                    (script, script_provenance) :: defs
                  else
                    defs)
@@ -120,7 +126,8 @@ let pp_page_summary pp { per_script; name; deferables } =
            "%a@.")
       name
       (IntMap.cardinal per_script)
-      (list ~sep:cut (pair ~sep:(const string "\t") int pp_provenance)) deferables
+      (list ~sep:cut (pair ~sep:(const string "\t") int pp_provenance))
+      deferables
       (iter_bindings ~sep:cut IntMap.iter pp_script_summary) per_script
 
 let short_str_provenance = function
@@ -152,14 +159,17 @@ let make_row name id { script_provenance; script_verdict; has_dom_writes;
       short_str_verdict script_verdict.Deferability.verdict;
       if has_dom_writes then "has DOM writes!" else "-";
       if assumed_deterministic then "assumed deterministic!" else "-";
-      strf "@[<h>%a@]" (iter ~sep:sp StringSet.iter string) has_potential_nondeterminism;
-      strf "@[<h>%a@]" (iter ~sep:sp Races.RaceSet.iter pp_short_race) potential_races
+      strf "@[<h>%a@]" (iter ~sep:sp StringSet.iter string)
+        has_potential_nondeterminism;
+      strf "@[<h>%a@]" (iter ~sep:sp Races.RaceSet.iter pp_short_race)
+        potential_races
     ]
 
 let csv_page_summary { per_script; name } chan =
   let open Csv in
     output_all (to_channel chan) @@
-    IntMap.fold (fun id data rows -> make_row name id data :: rows) per_script []
+    IntMap.fold (fun id data rows -> make_row name id data :: rows)
+      per_script []
 
 let re_query_string = Str.regexp "?.*"
 let url = function

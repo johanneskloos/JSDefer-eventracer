@@ -22,16 +22,17 @@ let pp_races =
     iter ~sep:(suffix sp (const string ";")) RaceSet.iter pp_race
 
 let find_potential_races races script_set =
-  List.fold_left (fun pr { Trace.ev1; ev2; var } ->
-                    match List.mem ev1 script_set, List.mem ev2 script_set,
-                          script_set with
-                      | true, false, script::_ ->
-                          RaceSet.add { script; script_ev = ev1; racing_ev = ev2;
-                                        refs = var } pr
-                      | false, true, script::_ ->
-                          RaceSet.add { script; script_ev = ev2; racing_ev = ev1;
-                                        refs = var } pr
-                      | _, _, _ -> pr)
+  List.fold_left
+    (fun pr { Trace.ev1; ev2; var } ->
+       match List.mem ev1 script_set, List.mem ev2 script_set,
+             script_set with
+         | true, false, script::_ ->
+             RaceSet.add { script; script_ev = ev1; racing_ev = ev2;
+                           refs = var } pr
+         | false, true, script::_ ->
+             RaceSet.add { script; script_ev = ev2; racing_ev = ev1;
+                           refs = var } pr
+         | _, _, _ -> pr)
     RaceSet.empty races
 
 

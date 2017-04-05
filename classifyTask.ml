@@ -125,7 +125,7 @@ let update_animation_requests (outer_state, inner_state) = function
   | Read (RHeap { id } , _)
       when List.mem id outer_state.animation_frame_request_functions ->
       if inner_state.type_known = None then
-        Log.warn (fun m -> m "Warning: Saw potential animation request outside JS code");
+        Log.warn (fun m -> m "Saw potential animation request outside JS code");
       (outer_state,
        { inner_state with potential_animation_request = true })
   | Read (RHeap { objtype = "Window";
@@ -225,7 +225,9 @@ let update_type_known outer_state inner_state cmd =
               { inner_state with type_known = Some (from_event_type e) }
           | None ->
               Log.err
-                (fun m -> m "@[<v2>Can't classify script type (toplevel)@,inner state: @[<hov>%a@]@,outer state: @[<hov>%a@]@,@]@."
+                (fun m -> m ("@[<v2>Can't classify script type (toplevel)@," ^^
+                             "inner state: @[<hov>%a@]@," ^^
+                             "outer state: @[<hov>%a@]@,@]@.")
                             pp_inner_state inner_state pp_state outer_state);
               { inner_state with type_known = Some UnclearScript }
         end
@@ -237,7 +239,9 @@ let update_type_known outer_state inner_state cmd =
               { inner_state with type_known = Some (from_event_type e) }
           | None ->
               Log.err
-                (fun m -> m "@[<v2>Can't classify script type (reference)@,inner state: @[<hov>%a@]@,outer state: @[<hov>%a@]@,@]@."
+                (fun m -> m ("@[<v2>Can't classify script type (reference)@," ^^
+                             "inner state: @[<hov>%a@]@," ^^
+                             "outer state: @[<hov>%a@]@,@]@.")
                             pp_inner_state inner_state pp_state outer_state);
               { inner_state with type_known = Some UnclearScript }
         end

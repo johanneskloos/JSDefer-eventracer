@@ -45,6 +45,16 @@ let pp_result pp { verdict; nondet; data } =
           pf pp "%a"
             pp_verdict verdict
 
+let classify_script assume_deterministic v
+      { Domination.dom_accesses; inline_scripts; async_scripts; nondet } =
+  if IntSet.mem v dom_accesses then HasDOMAccess
+  else if not (IntSet.is_empty dom_accesses) then DominatedByDOMAccess
+  else if not (IntSet.is_empty inline_scripts) then DominatedByInlineScript
+  else if not (IntSet.is_empty async_scripts) then DominatedByAsyncScript
+  else if not (StringSet.is_empty nondet || IntSet.mem v assume_deterministic)
+  then Nondeterministic
+  else Deferable
+
 let deferability_analysis assume_deterministic cl has_nondeterminism dom =
   Log.debug (fun m -> m "Performing deferability analysis");
   let open ClassifyTask in
@@ -53,19 +63,15 @@ let deferability_analysis assume_deterministic cl has_nondeterminism dom =
          try
            let ve = match vc with
              | ExternalSyncScript ->
-                 let { Domination.dom_accesses; inline_scripts; async_scripts; nondet } = dom v  in
-                   if IntSet.mem v dom_accesses then HasDOMAccess
-                   else if not (IntSet.is_empty dom_accesses) then DominatedByDOMAccess
-                   else if not (IntSet.is_empty inline_scripts) then DominatedByInlineScript
-                   else if not (IntSet.is_empty async_scripts) then DominatedByAsyncScript
-                   else if not (StringSet.is_empty nondet || IntSet.mem v assume_deterministic) then Nondeterministic
-                   else Deferable
+                 classify_script assume_deterministic v (dom v)
              | ExternalAsyncScript -> IsAsyncScript
              | ExternalDeferScript -> Deferred
              | InlineScript -> IsInlineScript
-             | UnclearScript -> Log.err
-                                  (fun m -> m "Script %d has unclear script type, guessing inline" v);
-                                IsInlineScript
+             | UnclearScript ->
+                 Log.err
+                   (fun m -> m ("Script %d has unclear script type," ^^
+                                "guessing inline") v);
+                 IsInlineScript
              | _ -> raise Exit
            in Some { verdict = ve; nondet = IntMap.mem v has_nondeterminism;
                      data = dom v }
