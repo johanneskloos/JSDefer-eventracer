@@ -26,6 +26,7 @@ let pp_value pp = let open Fmt in function
     | VEvent p -> pf pp "Event[0x%Lx]" p
     | Vunknown -> string pp "(unknown value)"
     | Vstring s -> pf pp "\"%s\"" s
+let show_value = Fmt.to_to_string pp_value
 
 module Value = struct
   type t = value
@@ -75,6 +76,8 @@ let pp_reference pp = let open Fmt in function
     | RArrayLength id -> pf pp "Array[%d]$LEN" id
     | RMemCell { base; prop } -> pf pp "[%Lx].%s" base prop
     | Runknown -> string pp "(unknown reference)"
+let show_reference = Fmt.to_to_string pp_reference
+
 module ReferenceSet = struct
   include BatSet.Make(Reference)
   let pp ?sep = Fmt.iter ?sep iter pp_reference
@@ -92,6 +95,7 @@ let js_type_str = function
   | FunctionCode -> "FunctionCode"
   | EvalCode -> "EvalCode"
 let pp_js_type = Fmt.using js_type_str Fmt.string
+let show_js_type = Fmt.to_to_string pp_js_type
 
 type event_fire =
   | FireAnchor | FireDefault
@@ -177,6 +181,8 @@ let script_type_to_string = function
   | STIinline -> "inserted inline script"
   | STIasync -> "inserted async script"
 let pp_script_type = Fmt.using script_type_to_string Fmt.string
+let show_script_type = script_type_to_string
+
 type scope = 
   | JSONDeclareGlobalvar
   | JSONDeclareGlobal
@@ -238,6 +244,7 @@ let pp_scope pp = let open Fmt in function
     | Script t -> pp_script_type pp t
     | Nondet f -> pf pp "nondet call: %s" f
     | Env f -> pf pp "env-dep. call: %s" f
+let show_scope = Fmt.to_to_string pp_scope
 let is_javascript_scope = function
   | JSONDeclareGlobal
   | JSONDeclareGlobalvar
@@ -511,6 +518,7 @@ let pp_command pp = let open Fmt in function
     | Enter scope ->
       pf pp "Enter scope %a" pp_scope scope
     | Exit -> string pp "Exit scope"
+let show_command = Fmt.to_to_string pp_command
 let pp_command_indent pp = let open Fmt in function
     | Read (ref, value) ->
       pf pp "@[<hov>Read %a@ yielding %a@]" pp_reference ref pp_value value
@@ -538,6 +546,7 @@ let event_action_type_str = function
   | EVUserInterface -> "user interface"
   | EVContinuation -> "continuation"
 let pp_event_action_type = Fmt.using event_action_type_str Fmt.string
+let show_event_action_type = Fmt.to_to_string pp_event_action_type
 
 type event = {
   evtype: event_action_type;
@@ -549,6 +558,7 @@ let pp_event pp { evtype; id; commands } = let open Fmt in
     id
     pp_event_action_type evtype
     (list ~sep:cut pp_command) commands
+let show_event = Fmt.to_to_string pp_event
 
 let pp_event_indent pp { evtype; id; commands } = let open Fmt in
   pf pp "@[<v>Event %d, type %a {@,@[<v2>  %a@]@ }@ @]"
@@ -582,6 +592,7 @@ type trace = {
 }
 let pp_trace pp { events; deps } = let open Fmt in
   vbox (list ~sep:Fmt.cut pp_event) pp events
+let show_trace = Fmt.to_to_string pp_trace
 
 let pp_pcre_error pp = let open Pcre in let open Fmt in function
   | Partial -> string pp "String only matched the pattern partially"
