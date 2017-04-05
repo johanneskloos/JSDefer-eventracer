@@ -246,8 +246,8 @@ let make_row name id { script_provenance; script_verdict; has_dom_writes;
     short_str_verdict script_verdict.verdict;
     if has_dom_writes then "has DOM writes!" else "-";
     if assumed_deterministic then "assumed deterministic!" else "-";
-    strf "%a" (iter ~sep:sp StringSet.iter string) has_potential_nondeterminism;
-    strf "%a" (iter ~sep:cut RaceSet.iter pp_short_race) potential_races
+    strf "@[<h>%a@]" (iter ~sep:sp StringSet.iter string) has_potential_nondeterminism;
+    strf "@[<h>%a@]" (iter ~sep:sp RaceSet.iter pp_short_race) potential_races
   ]
 
 let csv_page_summary { per_script; name } chan =
@@ -255,12 +255,14 @@ let csv_page_summary { per_script; name } chan =
   output_all (to_channel chan) @@
   IntMap.fold (fun id data rows -> make_row name id data :: rows) per_script []
 
+let re_query_string = Str.regexp "?.*"
 let url = function
   | ScriptInline -> "???"
   | ScriptSynchronous s
   | ScriptAsynchronous s
   | ScriptDeferred s
-  | ScriptOther s -> s
+  | ScriptOther s ->
+      Str.replace_first re_query_string "?<query string>" s
 
 let pp_defer pp { deferables } =
   let open Fmt in
