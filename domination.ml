@@ -38,13 +38,15 @@ module AnalysisStrategy = struct
       nondet = StringSet.union n1 n2
     }
   let equal 
-        { dom_accesses = d1;
+        { dom_accesses = d1; nondet = n1;
           inline_scripts = i1; async_scripts = a1 }
-        { dom_accesses = d2;
+        { dom_accesses = d2; nondet = n2;
           inline_scripts = i2; async_scripts = a2 } =
     IntSet.equal d1 d2 &&
       IntSet.equal i1 i2 &&
-      IntSet.equal a1 a2
+      IntSet.equal a1 a2 &&
+      StringSet.equal n1 n2
+
   let analyze (_: edge) (r: analysis_result) = r
 end
 
