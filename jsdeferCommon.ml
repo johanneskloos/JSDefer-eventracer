@@ -145,8 +145,8 @@ let pp_summary pp { script_provenance; script_verdict; has_dom_writes;
     pp_determinism (has_potential_nondeterminism, assumed_deterministic)
     pp_races potential_races
 
-let lookup_url { events } script =
-  let { commands } = BatList.nth events script
+let lookup_url trace script =
+  let commands = IntMap.find script trace
   in let rec find = function
     | Enter (JSCode { source }) :: _ -> source
     | _ :: rest -> find rest
@@ -195,7 +195,11 @@ let calculate_deferables per_script =
 
 let summarize base assumed trace cl data depgraph result =
   (* Do a per-script summary *)
-  let per_script = IntMap.mapi (summarize_one assumed trace cl data) result
+  let trace_map =
+    List.fold_left
+      (fun trace_map { commands; id } -> IntMap.add id commands trace_map)
+      IntMap.empty trace.events
+  in let per_script = IntMap.mapi (summarize_one assumed trace_map cl data) result
   in { per_script; name = base; deferables = calculate_deferables per_script }
 
 let pp_script_summary pp (script, summary) =
