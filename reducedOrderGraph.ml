@@ -2,34 +2,16 @@ open Trace
 open ReadsWrites
 open PostAndWaitGraph
 
-let log_channel = ref None
-let log channel =
-  let pp = Format.formatter_of_out_channel channel in
-    Format.pp_open_vbox pp 0;
-    log_channel := Some (channel, pp)
 let log_add_edge reason ref efrom eto =
-  match !log_channel with
-    | Some (_, pp) ->
-        Format.fprintf pp "%s %a: %d -> %d@," reason pp_reference ref efrom eto
-    | None -> ()
+  DetailLog.log
+    (fun f -> f "%s %a: %d -> %d@," reason pp_reference ref efrom eto)
 let log_red src tgt=
-  match !log_channel with
-    | Some (_, pp) ->
-        Format.fprintf pp "Merge %d %d@," src tgt
-    | None -> ()
+  DetailLog.log
+    (fun f -> f "Merge %d %d@," src tgt)
 let log_succs what src tgts =
-  match !log_channel with
-    | Some (_, pp) ->
-        Format.fprintf pp "@[<hov 2>Reduction for %s: %d gets %a@]@,"
-          what src (Fmt.list ~sep:Fmt.sp Fmt.int) tgts
-    | None -> ()
-
-let close_log () = match !log_channel with
-  | Some (chan, pp) ->
-      Format.pp_close_box pp ();
-      Format.pp_print_flush pp ();
-      close_out chan
-  | None -> ()
+  DetailLog.log
+    (fun f -> f "@[<hov 2>Reduction for %s: %d gets %a@]@,"
+          what src (Fmt.list ~sep:Fmt.sp Fmt.int) tgts)
 
 type state = {
   dependent_reads: (int list * value option) ReferenceMap.t;
