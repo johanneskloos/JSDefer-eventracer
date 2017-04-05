@@ -1,23 +1,3 @@
-let with_out_file filename f =
-  let chan = open_out filename in try
-    f chan;
-    close_out chan
-  with e ->
-    close_out chan;
-    raise e
-
-let with_formatter filename f =
-  with_out_file filename
-    (fun chan ->
-       let pp = Format.formatter_of_out_channel chan in
-         Format.pp_open_vbox pp 0;
-         f pp;
-         Format.pp_close_box pp ();
-         Format.pp_print_flush pp ())
-
-let write_to_file filename (fmt: 'a Fmt.t) data =
-  with_formatter filename (fun pp -> fmt pp data)
-
 let load_determinism_facts filename =
   try
     BatFile.lines_of filename |> BatEnum.fold
@@ -41,9 +21,10 @@ let calculate_and_write_analysis base intrace indet makeoutput =
     |> Deferability.calculate_deferability deterministic_scripts
     |> Summary.summarize base deterministic_scripts
   in
-    write_to_file (makeoutput "result") Summary.pp_page_summary summary;
-    with_out_file (makeoutput "result.csv") (Summary.csv_page_summary summary);
-    write_to_file (makeoutput "defer") Summary.pp_defer summary
+    Helpers.write_to_file (makeoutput "result") Summary.pp_page_summary summary;
+    Helpers.with_out_file (makeoutput "result.csv") (Summary.csv_page_summary summary);
+    Helpers.write_to_file (makeoutput "defer") Summary.pp_defer summary;
+    DetailLog.close_log ()
 
 let analyze filename =
   Log.set_source_for_file filename;
@@ -75,5 +56,4 @@ let () =
     ("-d", Arg.Set use_determinism_facts, "use information from determinism fact files")
   ] (fun task -> tasks := task :: !tasks) "";
   List.iter (fun fn -> TaskPool.start_task !timeout analyze fn) !tasks;
-  TaskPool.drain ();
-  DetailLog.close_log ()
+  TaskPool.drain ()
