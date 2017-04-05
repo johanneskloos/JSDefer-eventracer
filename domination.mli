@@ -26,6 +26,6 @@ val calculate_domination :
   IntSet.t ->
   Trace.trace ->
   Trace.trace * ClassifyTask.classification IntMap.t *
-  ReducedOrderGraph.data * ReducedOrderGraph.data *
+  ReducedOrderGraph.trace_facts * ReducedOrderGraph.trace_facts *
   Trace.value option Trace.ReferenceMap.t * Trace.DependencyGraph.t *
   (int -> analysis_result) * result IntMap.t

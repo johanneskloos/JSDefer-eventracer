@@ -9,7 +9,7 @@ type race = {
 module RaceSet : BatSet.S with type elt = race
 val pp_races : RaceSet.t Fmt.t
 
-type data = {
+type trace_facts = {
   has_dom_write : IntSet.t;
   has_nondeterminism : StringSet.t IntMap.t;
   spec : ReadsWrites.event_standalone_spec IntMap.t;
@@ -19,5 +19,5 @@ type data = {
 }
 val calculate :
   Trace.trace ->
-  Trace.trace * ClassifyTask.classification IntMap.t * data * data *
+  Trace.trace * ClassifyTask.classification IntMap.t * trace_facts * trace_facts *
   Trace.value option Trace.ReferenceMap.t * Trace.DependencyGraph.t

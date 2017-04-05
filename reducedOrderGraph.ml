@@ -113,7 +113,7 @@ let pp_races =
   let open Fmt in
     iter ~sep:(suffix sp (const string ";")) RaceSet.iter pp_race
 
-type data = {
+type trace_facts = {
   has_dom_write: IntSet.t;
   has_nondeterminism: StringSet.t IntMap.t;
   spec: ReadsWrites.event_standalone_spec IntMap.t;
