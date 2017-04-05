@@ -56,7 +56,7 @@ let () =
   and tasks = ref []
   and timeout = ref None in
   Arg.parse [
-    ("-G", Arg.Set ReducedOrderGraph.guid_heuristic, "GUID heuristic (HACK)");
+    ("-G", Arg.Set CalculateRFandMO.guid_heuristic, "GUID heuristic (HACK)");
     ("-L", Arg.Set log, "log file");
     ("-n", Arg.Set_int task_pool_max, "number of parallel tasks");
     ("-t", Arg.Int (fun n -> timeout := Some n), "timeout (in seconds)");

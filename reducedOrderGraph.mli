@@ -1,5 +1,3 @@
-val guid_heuristic : bool ref
-
 type trace_facts = {
   trace: Trace.trace;
   classification: ClassifyTask.classification IntMap.t;
