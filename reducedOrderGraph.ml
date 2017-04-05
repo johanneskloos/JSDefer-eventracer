@@ -90,29 +90,6 @@ let task_step ecur { ReadsWrites.reads; writes }
     ReferenceMap.merge (merge_last_writes ecur) last_writes writes
   in { graph; dependent_reads; last_writes }
 
-type race = {
-  script: int;
-  script_ev: int;
-  racing_ev: int;
-  refs: reference
-} [@@deriving ord]
-
-let pp_race pp { script; script_ev; racing_ev; refs } =
-  let open Fmt in
-    pf pp "@[<h>%d:%d - %d on %a@]" script script_ev racing_ev
-      pp_reference refs
-let show_race = Fmt.to_to_string pp_race
-
-module Race = struct
-  type t = race
-  let compare = compare_race
-end
-module RaceSet = BatSet.Make(Race)
-
-let pp_races =
-  let open Fmt in
-    iter ~sep:(suffix sp (const string ";")) RaceSet.iter pp_race
-
 type trace_facts = {
   trace: Trace.trace;
   classification: ClassifyTask.classification IntMap.t;
@@ -120,7 +97,7 @@ type trace_facts = {
   has_nondeterminism: StringSet.t IntMap.t;
   spec: ReadsWrites.event_standalone_spec IntMap.t;
   po: PostAndWaitGraph.PostWaitGraph.t;
-  potential_races: RaceSet.t;
+  potential_races: Races.RaceSet.t;
   script_short_timeouts: int list;
   dependency_graph: Trace.DependencyGraph.t
 }
@@ -169,19 +146,6 @@ let gather_post_successors cl po v =
   in
   List.tl (IntSet.to_list (gather_post_successors_set pred po [v]))
 
-let find_potential_races races script_set =
-  List.fold_left (fun pr { ev1; ev2; var } ->
-                    match List.mem ev1 script_set, List.mem ev2 script_set,
-                          script_set with
-                      | true, false, script::_ ->
-                          RaceSet.add { script; script_ev = ev1; racing_ev = ev2;
-                                        refs = var } pr
-                      | false, true, script::_ ->
-                          RaceSet.add { script; script_ev = ev2; racing_ev = ev1;
-                                        refs = var } pr
-                      | _, _, _ -> pr)
-    RaceSet.empty races
-
 let merge_successors_for races v cl data =
   (* Gather post successors of v *)
   let open ClassifyTask in
@@ -192,13 +156,13 @@ let merge_successors_for races v cl data =
       (fun v -> IntMap.find v cl = ShortTimerEventHandlerScript)
       post_successors
   in let potential_races =
-    RaceSet.union
-      (find_potential_races races (v :: short_timeouts @ immediates))
+    Races.RaceSet.union
+      (Races.find_potential_races races (v :: short_timeouts @ immediates))
       data.potential_races
   and script_short_timeouts = short_timeouts @ data.script_short_timeouts
   in log_succs "script (immediate)" v immediates;
      Logs.debug ~src:!Log.source
-       (fun m -> m "@[<hov 4>potential races: %a]" pp_races potential_races);
+       (fun m -> m "@[<hov 4>potential races: %a]" Races.pp_races potential_races);
     BatList.fold_left (merge_successor v)
        { data with potential_races; script_short_timeouts } immediates
 
@@ -254,7 +218,7 @@ let reduce races scripts cl data =
   Logs.debug ~src:!Log.source (fun m -> m "Reducing scripts");
   let data' = merge_successors_scripts races scripts cl data
   in Logs.debug ~src:!Log.source (fun m -> m "@[<hov 4>Races: %a@]"
-                                             pp_races data'.potential_races);
+                                             Races.pp_races data'.potential_races);
     (merge_post_dcl scripts cl data',
       filter_irrelevant
         (IntSet.filter
@@ -288,7 +252,7 @@ let calculate trace =
   and scripts = find_scripts cl
   in let data = { trace; classification = cl;
                   has_dom_write; has_nondeterminism;
-                  spec; po; potential_races = RaceSet.empty;
+                  spec; po; potential_races = Races.RaceSet.empty;
                   script_short_timeouts = [];
                   dependency_graph = DependencyGraph.empty }
   in let (_, data') = reduce trace.races scripts cl data

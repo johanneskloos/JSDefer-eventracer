@@ -29,7 +29,7 @@ type domination_facts = {
   has_nondeterminism : StringSet.t IntMap.t;
   spec : ReadsWrites.event_standalone_spec IntMap.t;
   po : PostAndWaitGraph.PostWaitGraph.t;
-  potential_races : ReducedOrderGraph.RaceSet.t;
+  potential_races : Races.RaceSet.t;
   script_short_timeouts : int list;
   dependency_graph: Trace.DependencyGraph.t;
   verdicts: result IntMap.t

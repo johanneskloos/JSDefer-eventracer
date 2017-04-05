@@ -44,7 +44,7 @@ type summary = {
   has_dom_writes: bool;
   has_potential_nondeterminism: StringSet.t;
   assumed_deterministic: bool;
-  potential_races: ReducedOrderGraph.RaceSet.t;
+  potential_races: Races.RaceSet.t;
 }
 
 let pp_determinism pp = function
@@ -67,7 +67,7 @@ let pp_summary pp { script_provenance; script_verdict; has_dom_writes;
     Domination.pp_verdict script_verdict.Domination.verdict
     has_dom_writes
     pp_determinism (has_potential_nondeterminism, assumed_deterministic)
-    ReducedOrderGraph.pp_races potential_races
+    Races.pp_races potential_races
 
 let lookup_url trace script =
   let open Trace in
@@ -96,8 +96,8 @@ let summarize_one assumed trace cl has_dom_write has_nondeterminism potential_ra
       IntMap.find script has_nondeterminism
     with Not_found -> StringSet.empty
     and potential_races =
-      ReducedOrderGraph.RaceSet.filter
-        (fun { ReducedOrderGraph.script = script' } -> script = script')
+      Races.RaceSet.filter
+        (fun { Races.script = script' } -> script = script')
         potential_races
     in Logs.info (fun k -> k "Adding script %d" script);
        { script_provenance; script_verdict;
@@ -123,9 +123,9 @@ let summarize base assumed trace cl has_dom_write has_nondeterminism potential_r
   (* Do a per-script summary *)
   let trace_map =
     let open Trace in
-    List.fold_left
-      (fun trace_map { commands; id } -> IntMap.add id commands trace_map)
-      IntMap.empty trace.events
+      List.fold_left
+        (fun trace_map { commands; id } -> IntMap.add id commands trace_map)
+        IntMap.empty trace.events
   in let per_script = IntMap.mapi (summarize_one assumed trace_map cl has_dom_write has_nondeterminism potential_races) result
   in { per_script; name = base; deferables = calculate_deferables per_script }
 
@@ -160,27 +160,27 @@ let short_str_verdict = let open Domination in function
   | DominatedByInlineScript -> "<- inline"
   | DominatedByAsyncScript -> "<- async"
   | Nondeterministic -> "nondet"
-let pp_short_race pp { ReducedOrderGraph.script_ev; racing_ev; refs } =
+let pp_short_race pp { Races.script_ev; racing_ev; refs } =
   Fmt.pf pp "%d-%d@%a" script_ev racing_ev Trace.pp_reference refs
 let make_row name id { script_provenance; script_verdict; has_dom_writes;
                        assumed_deterministic; has_potential_nondeterminism;
                        potential_races } =
   let open Fmt in
-  [
-    name;
-    string_of_int id;
-    short_str_provenance script_provenance;
-    short_str_verdict script_verdict.Domination.verdict;
-    if has_dom_writes then "has DOM writes!" else "-";
-    if assumed_deterministic then "assumed deterministic!" else "-";
-    strf "@[<h>%a@]" (iter ~sep:sp StringSet.iter string) has_potential_nondeterminism;
-    strf "@[<h>%a@]" (iter ~sep:sp ReducedOrderGraph.RaceSet.iter pp_short_race) potential_races
-  ]
+    [
+      name;
+      string_of_int id;
+      short_str_provenance script_provenance;
+      short_str_verdict script_verdict.Domination.verdict;
+      if has_dom_writes then "has DOM writes!" else "-";
+      if assumed_deterministic then "assumed deterministic!" else "-";
+      strf "@[<h>%a@]" (iter ~sep:sp StringSet.iter string) has_potential_nondeterminism;
+      strf "@[<h>%a@]" (iter ~sep:sp Races.RaceSet.iter pp_short_race) potential_races
+    ]
 
 let csv_page_summary { per_script; name } chan =
   let open Csv in
-  output_all (to_channel chan) @@
-  IntMap.fold (fun id data rows -> make_row name id data :: rows) per_script []
+    output_all (to_channel chan) @@
+    IntMap.fold (fun id data rows -> make_row name id data :: rows) per_script []
 
 let re_query_string = Str.regexp "?.*"
 let url = function
@@ -206,8 +206,8 @@ let calculate_and_write_analysis log use_det base intrace indet makeoutput =
   in let { Domination.trace; classification; has_dom_write; has_nondeterminism; potential_races;
            dependency_graph; verdicts } =
     CleanLog.load intrace
-      |> Trace.parse_trace
-      |> Domination.calculate_domination deterministic_scripts
+    |> Trace.parse_trace
+    |> Domination.calculate_domination deterministic_scripts
   in let summary =
     summarize base deterministic_scripts trace classification has_dom_write has_nondeterminism potential_races dependency_graph verdicts
   in
@@ -217,17 +217,17 @@ let calculate_and_write_analysis log use_det base intrace indet makeoutput =
 
 let analyze log filename use_determinism_facts =
   let open Filename in
-  if Sys.is_directory filename then
-    calculate_and_write_analysis log
-      use_determinism_facts
-      (basename filename)
-      (concat filename "ER_actionlog")
-      (concat filename "deterministic")
-      (fun suffix -> concat filename suffix)
-  else
-    let base = Filename.chop_suffix (Filename.basename filename) ".log" in
-    calculate_and_write_analysis log use_determinism_facts base filename
-      (base ^ ".deterministic")
-      (fun suffix -> base ^ suffix)
+    if Sys.is_directory filename then
+      calculate_and_write_analysis log
+        use_determinism_facts
+        (basename filename)
+        (concat filename "ER_actionlog")
+        (concat filename "deterministic")
+        (fun suffix -> concat filename suffix)
+    else
+      let base = Filename.chop_suffix (Filename.basename filename) ".log" in
+        calculate_and_write_analysis log use_determinism_facts base filename
+          (base ^ ".deterministic")
+          (fun suffix -> base ^ suffix)
 
 
