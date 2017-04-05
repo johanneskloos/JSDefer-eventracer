@@ -1,5 +1,6 @@
 let task_pool_size = ref 0
 let task_pool_max = ref 4
+let use_determinism_facts = ref false
 
 let start_task timeout f x =
   while !task_pool_size >= !task_pool_max do
@@ -27,7 +28,7 @@ let chldhandler (_: int) = decr task_pool_size
 
 let run_analysis log file =
   Log.set_source_for_file file;
-  JsdeferCommon.analyze log file
+  JsdeferCommon.analyze log file !use_determinism_facts
 
 let improved_reporter () =
   let logfile =
@@ -60,7 +61,8 @@ let () =
     ("-n", Arg.Set_int task_pool_max, "number of parallel tasks");
     ("-t", Arg.Int (fun n -> timeout := Some n), "timeout (in seconds)");
     ("-D", Arg.Unit (fun () -> Logs.set_level ~all:true (Some Logs.Debug)), "enable debugging output");
-    ("-T", Arg.Unit (fun () -> timeout := None), "no timeout")
+    ("-T", Arg.Unit (fun () -> timeout := None), "no timeout");
+    ("-d", Arg.Set use_determinism_facts, "use information from determinism fact files")
   ] (fun task -> tasks := task :: !tasks) "";
   Sys.set_signal Sys.sigchld (Sys.Signal_handle chldhandler);
   List.iter (fun fn -> start_task !timeout (run_analysis log) fn) !tasks;

@@ -572,7 +572,7 @@ type race_info = {
   ev2: int;
   cmd1: int;
   cmd2: int;
-  var: int
+  var: reference
 }
 
 type trace = {
@@ -601,9 +601,9 @@ let parse_trace { CleanLog.events; deps; races } =
         let open EventRacer in
           BatList.filter_map
           (fun { ri_event1; ri_event2; ri_cmd1; ri_cmd2; ri_var; ri_covered } ->
-              if ri_covered = -1 then
+              if ri_covered = None then
                   Some { ev1 = ri_event1; ev2 = ri_event2; cmd1 = ri_cmd1;
-                  cmd2 = ri_cmd2; var = ri_var }
+                  cmd2 = ri_cmd2; var = parse_reference ri_var }
               else None)
           races }
   with Pcre.Error err as e ->

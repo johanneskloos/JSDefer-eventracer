@@ -86,6 +86,8 @@ type verdict =
   | DominatedByDOMAccess
   | DominatedByInlineScript
   | DominatedByAsyncScript
+  | Nondeterministic
+
 let verdict_to_string = function
     (* Deferable cases *)
     Deferable -> "deferable"
@@ -97,6 +99,7 @@ let verdict_to_string = function
   | DominatedByDOMAccess -> "dominated by a DOM-writing script"
   | DominatedByInlineScript -> "dominated by an inline script"
   | DominatedByAsyncScript -> "dominated by an async script"
+  | Nondeterministic -> "potentially nondeterministic"
 let pp_verdict = Fmt.using verdict_to_string Fmt.string
 
 type result = {
@@ -110,16 +113,14 @@ let pp_result pp { verdict; nondet; data } =
       | DominatedByDOMAccess
       | DominatedByAsyncScript
       | DominatedByInlineScript ->
-          pf pp "%a%s: %a"
+          pf pp "%a: %a"
             pp_verdict verdict
-            (if nondet then " (non-deterministic)" else "")
             pp_analysis_result data
       | _ ->
-          pf pp "%a%s"
+          pf pp "%a"
             pp_verdict verdict
-            (if nondet then " (non-deterministic)" else "")
 
-let deferability_analysis cl { has_nondeterminism } dom =
+let deferability_analysis assume_deterministic cl { has_nondeterminism } dom =
   Logs.debug ~src:!Log.source (fun m -> m "Performing deferability analysis");
   let open ClassifyTask in
     IntMap.filter_map
@@ -127,11 +128,12 @@ let deferability_analysis cl { has_nondeterminism } dom =
          try
            let ve = match vc with
              | ExternalSyncScript ->
-                 let { dom_accesses; inline_scripts; async_scripts } = dom v  in
+                 let { dom_accesses; inline_scripts; async_scripts; nondet } = dom v  in
                    if IntSet.mem v dom_accesses then HasDOMAccess
                    else if not (IntSet.is_empty dom_accesses) then DominatedByDOMAccess
                    else if not (IntSet.is_empty inline_scripts) then DominatedByInlineScript
                    else if not (IntSet.is_empty async_scripts) then DominatedByAsyncScript
+                   else if not (StringSet.is_empty nondet || IntSet.mem v assume_deterministic) then Nondeterministic
                    else Deferable
              | ExternalAsyncScript -> IsAsyncScript
              | ExternalDeferScript -> Deferred
@@ -145,10 +147,10 @@ let deferability_analysis cl { has_nondeterminism } dom =
          with Exit -> None | Not_found -> None)
       cl
 
-let calculate_domination trace =
+let calculate_domination assume_deterministic trace =
   let (trace, cl, data, data', dcl_pre, depgraph) =
     calculate trace
   in let dom = calculate_domination data' cl depgraph
-  in let def = deferability_analysis cl data' dom
+  in let def = deferability_analysis assume_deterministic cl data' dom
   in (trace, cl, data, data', dcl_pre, depgraph, dom, def)
 
