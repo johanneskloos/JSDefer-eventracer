@@ -101,6 +101,7 @@ let pp_race pp { script; script_ev; racing_ev; refs } =
   let open Fmt in
     pf pp "@[<h>%d:%d - %d on %a@]" script script_ev racing_ev
       pp_reference refs
+let show_race = Fmt.to_to_string pp_race
 
 module Race = struct
   type t = race
