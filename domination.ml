@@ -51,6 +51,51 @@ end
 
 module DominationAnalysis =
   Graph.Fixpoint.Make(DependencyGraph)(AnalysisStrategy)
+module Dfs = Graph.Traverse.Dfs(DependencyGraph)
+
+let check_subset v1 v2 result =
+  let { dom_accesses = d1; inline_scripts = i1;
+        async_scripts = a1; nondet = n1} = result v1
+  and { dom_accesses = d2; inline_scripts = i2;
+        async_scripts = a2; nondet = n2} = result v2
+  in let isp pp = IntSet.pp pp
+  and ssp pp = StringSet.pp pp in
+    if not (IntSet.subset d2 d1) then
+      Log.err (fun m -> m "Found bad propagation: %d -> %d, dom: {%a} ̸̸⊆ {%a}"
+                          v2 v1 isp d2 isp d1);
+    if not (IntSet.subset i2 i1) then
+      Log.err (fun m -> m "Found bad propagation: %d -> %d, inl: {%a} ̸̸⊆ {%a}"
+                          v2 v1 isp i2 isp i1);
+    if not (IntSet.subset a2 a1) then
+      Log.err (fun m -> m "Found bad propagation: %d -> %d, asy: {%a} ̸̸⊆ {%a}"
+                          v2 v1 isp a2 isp a1);
+    if not (StringSet.subset n2 n1) then
+      Log.err (fun m -> m "Found bad propagation: %d -> %d, det: {%a} ̸̸⊆ {%a}"
+                          v2 v1 ssp n2 ssp n1)
+
+let sanity_check nd dw cl dep result =
+  DependencyGraph.iter_vertex
+    (fun v ->
+       Dfs.prefix_component (fun v' ->
+         check_subset v v' result)
+         dep v;
+       let { dom_accesses; inline_scripts; async_scripts;
+             nondet } = result v
+       in
+         if IntMap.mem v nd && StringSet.is_empty nondet then
+           Log.err (fun m -> m "Found bad nondet set: %d" v);
+         if IntSet.mem v dw && not (IntSet.mem v dom_accesses) then
+           Log.err (fun m -> m "Found bad dom_acc set: %d" v);
+         match IntMap.find v cl with
+           | ClassifyTask.InlineScript ->
+               if not (IntSet.mem v inline_scripts) then
+                 Log.err (fun m -> m "Found missing inline script: %d" v)
+           | ClassifyTask.ExternalAsyncScript ->
+               if not (IntSet.mem v async_scripts) then
+                 Log.err (fun m -> m "Found missing async script: %d" v)
+           | _ -> ())
+    dep
+
 let calculate_domination has_nondeterminism has_dom_write cl depgraph =
   Log.debug (fun m -> m "Calculating domination facts");
   try
@@ -58,7 +103,7 @@ let calculate_domination has_nondeterminism has_dom_write cl depgraph =
       if p then IntSet.singleton v else IntSet.empty
     in let maybe_singleton s v =
       cond_singleton (IntSet.mem v s) v
-    in DominationAnalysis.analyze
+    in let result = DominationAnalysis.analyze
          (fun v ->
             let open ClassifyTask in
               { dom_accesses = maybe_singleton has_dom_write v;
@@ -71,6 +116,8 @@ let calculate_domination has_nondeterminism has_dom_write cl depgraph =
                   with Not_found -> StringSet.empty 
               })
          depgraph
+    in sanity_check has_nondeterminism has_dom_write cl depgraph result;
+       result
   with Not_found ->
     failwith "Not_found in calculate_domination"
 
