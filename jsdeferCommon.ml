@@ -217,6 +217,56 @@ let pp_page_summary pp { per_script; name; deferables } =
       (list ~sep:cut (pair ~sep:(const string "\t") int pp_provenance)) deferables
       (iter_bindings ~sep:cut IntMap.iter pp_script_summary) per_script
 
+let short_str_provenance = function
+  | ScriptInline -> "<inline>"
+  | ScriptSynchronous src -> "sync " ^ src
+  | ScriptAsynchronous src -> "async " ^ src
+  | ScriptDeferred src -> "defer " ^ src
+  | ScriptOther src -> "other " ^ src
+let short_str_verdict = function
+  | Deferable -> "deferable"
+  | Deferred -> "deferred"
+  | HasDOMAccess -> "DOM access"
+  | IsInlineScript -> "inline"
+  | IsAsyncScript -> "async"
+  | DominatedByDOMAccess -> "<- DOM"
+  | DominatedByInlineScript -> "<- inline"
+  | DominatedByAsyncScript -> "<- async"
+  | Nondeterministic -> "nondet"
+let pp_short_race pp { script_ev; racing_ev; refs } =
+  Fmt.pf pp "%d-%d@%a" script_ev racing_ev pp_reference refs
+let make_row name id { script_provenance; script_verdict; has_dom_writes;
+                       assumed_deterministic; has_potential_nondeterminism;
+                       potential_races } =
+  let open Fmt in
+  [
+    name;
+    string_of_int id;
+    short_str_provenance script_provenance;
+    short_str_verdict script_verdict.verdict;
+    if has_dom_writes then "has DOM writes!" else "-";
+    if assumed_deterministic then "assumed deterministic!" else "-";
+    strf "%a" (iter ~sep:sp StringSet.iter string) has_potential_nondeterminism;
+    strf "%a" (iter ~sep:cut RaceSet.iter pp_short_race) potential_races
+  ]
+
+let csv_page_summary { per_script; name } chan =
+  let open Csv in
+  output_all (to_channel chan) @@
+  IntMap.fold (fun id data rows -> make_row name id data :: rows) per_script []
+
+let url = function
+  | ScriptInline -> "???"
+  | ScriptSynchronous s
+  | ScriptAsynchronous s
+  | ScriptDeferred s
+  | ScriptOther s -> s
+
+let pp_defer pp { deferables } =
+  let open Fmt in
+    vbox (list ~sep:cut (hbox @@ pair ~sep:sp int (using url string)))
+      pp deferables
+
 let calculate_and_write_analysis log use_det base intrace indet makeoutput =
   if !log then ReducedOrderGraph.log (open_out (makeoutput ".details"));
   let deterministic_scripts =
@@ -231,7 +281,9 @@ let calculate_and_write_analysis log use_det base intrace indet makeoutput =
   in let summary =
     summarize base deterministic_scripts trace cl data depgraph def
   in
-    write_to_file (makeoutput "result") pp_page_summary summary
+    write_to_file (makeoutput "result") pp_page_summary summary;
+    with_out_file (makeoutput "result.csv") (csv_page_summary summary);
+    write_to_file (makeoutput "defer") pp_defer summary
 
 let analyze log filename use_determinism_facts =
   let open Filename in

@@ -1,1 +1,3 @@
-true: package(batteries), package(fmt), package(eventracer), package(ppx_deriving.ord), package(ocaml-protoc), package(ppx_deriving.show), package(yojson), package(logs)
+true: package(batteries), package(fmt), package(eventracer)
+true: package(ppx_deriving.ord), package(ppx_deriving.show), package(yojson)
+true: package(logs), package(csv)
