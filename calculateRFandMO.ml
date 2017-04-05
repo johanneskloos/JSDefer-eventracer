@@ -1,7 +1,5 @@
 open Trace
 
-let guid_heuristic = ref false
-
 let log_add_edge reason ref efrom eto =
   DetailLog.log
     (fun f -> f "%s %a: %d -> %d@," reason pp_reference ref efrom eto)
@@ -29,7 +27,7 @@ let warn_read_incompatibility v1 v2 =
 
 let add_rf_edge last_writes ecur ref v1 graph =
   match ref with
-    | RHeap { prop = "guid" } when !guid_heuristic -> graph
+    | RHeap { prop = "guid" } when !Config.guid_heuristic -> graph
     | _ -> try
         let (v2, ewrite) = ReferenceMap.find ref last_writes
         in warn_read_incompatibility v1 v2;
@@ -40,7 +38,7 @@ let add_rf_edge last_writes ecur ref v1 graph =
 
 let add_mo_edges dependent_reads ecur ref v1 graph =
   match ref with
-    | RHeap { prop = "guid" } when !guid_heuristic -> graph
+    | RHeap { prop = "guid" } when !Config.guid_heuristic -> graph
     | _ -> try
         let (deps, v2) = ReferenceMap.find ref dependent_reads in
           match v1, v2 with

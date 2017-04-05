@@ -1,8 +1,7 @@
 let task_pool_size = ref 0
-let task_pool_max = ref 4
 
 let start_task timeout f x =
-  while !task_pool_size >= !task_pool_max do
+  while !task_pool_size >= !Config.task_pool_max do
     ignore (Unix.wait ())
   done;
   match Unix.fork () with

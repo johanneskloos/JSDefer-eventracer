@@ -1,6 +1,3 @@
-let log = ref false
-let use_determinism_facts = ref false
-
 let load_determinism_facts filename =
   try
     BatFile.lines_of filename |> BatEnum.fold
@@ -9,9 +6,9 @@ let load_determinism_facts filename =
   with _ -> IntSet.empty
 
 let calculate_and_write_analysis base intrace indet makeoutput =
-  if !log then DetailLog.open_log (open_out (makeoutput ".details"));
+  if !Config.use_detailed_log then DetailLog.open_log (open_out (makeoutput ".details"));
   let deterministic_scripts =
-    if !use_determinism_facts && Sys.file_exists indet then
+    if !Config.use_determinism_facts && Sys.file_exists indet then
       load_determinism_facts indet
     else
       IntSet.empty
@@ -47,13 +44,13 @@ let () =
   let tasks = ref []
   and timeout = ref None in
   Arg.parse [
-    ("-G", Arg.Set CalculateRFandMO.guid_heuristic, "GUID heuristic (HACK)");
-    ("-L", Arg.Set log, "log file");
-    ("-n", Arg.Set_int TaskPool.task_pool_max, "number of parallel tasks");
+    ("-G", Arg.Set Config.guid_heuristic, "GUID heuristic (HACK)");
+    ("-L", Arg.Set Config.use_detailed_log, "write detailed log file");
+    ("-n", Arg.Set_int Config.task_pool_max, "number of parallel tasks");
     ("-t", Arg.Int (fun n -> timeout := Some n), "timeout (in seconds)");
     ("-D", Arg.Unit (fun () -> Logs.set_level ~all:true (Some Logs.Debug)), "enable debugging output");
     ("-T", Arg.Unit (fun () -> timeout := None), "no timeout");
-    ("-d", Arg.Set use_determinism_facts, "use information from determinism fact files")
+    ("-d", Arg.Set Config.use_determinism_facts, "use information from determinism fact files")
   ] (fun task -> tasks := task :: !tasks) "";
   List.iter (fun fn -> TaskPool.start_task !timeout analyze fn) !tasks;
   TaskPool.drain ()
