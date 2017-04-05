@@ -148,7 +148,7 @@ let pp_summary pp { script_provenance; script_verdict; has_dom_writes;
 let lookup_url { events } script =
   let { commands } = BatList.nth events script
   in let rec find = function
-    | Enter (JSCode { source; jstype = GlobalCode }) :: _ -> source
+    | Enter (JSCode { source }) :: _ -> source
     | _ :: rest -> find rest
     | [] -> Logs.err (fun k -> k "Can't find URL for script %d, adding dummy" script);
             "<unknown>"
@@ -213,45 +213,35 @@ let pp_page_summary pp { per_script; name; deferables } =
       (list ~sep:cut (pair ~sep:(const string "\t") int pp_provenance)) deferables
       (iter_bindings ~sep:cut IntMap.iter pp_script_summary) per_script
 
+let calculate_and_write_analysis log use_det base intrace indet makeoutput =
+  if !log then ReducedOrderGraph.log (open_out (makeoutput ".details"));
+  let deterministic_scripts =
+    if use_det && Sys.file_exists indet then
+      load_determinism_facts indet
+    else
+      IntSet.empty
+  in let (trace, cl, data, data', dcl_pre, depgraph, dom, def) =
+    CleanLog.load intrace
+      |> Trace.parse_trace
+      |> Domination.calculate_domination deterministic_scripts
+  in let summary =
+    summarize base deterministic_scripts trace cl data depgraph def
+  in
+    write_to_file (makeoutput "result") pp_page_summary summary
+
 let analyze log filename use_determinism_facts =
-  let base = Filename.chop_suffix (Filename.basename filename) ".log" in
-    if !log then ReducedOrderGraph.log (open_out (base ^ ".details"));
-    let deterministic_scripts =
-      if use_determinism_facts then
-        load_determinism_facts (base ^ ".det")
-      else
-        IntSet.empty
-    in let (trace, cl, data, data', dcl_pre, depgraph, dom, def) =
-      CleanLog.load filename
-        |> Trace.parse_trace
-        |> Domination.calculate_domination deterministic_scripts
-    in let summary =
-      summarize base deterministic_scripts trace cl data depgraph def
-    in
-      write_to_file (base ^ ".result") pp_page_summary summary;
-      (*write_classified_trace (base ^ ".cltr") trace cl;
-      write_data (base ^ ".data") data;
-      write_data (base ^ ".red-data") data';
-      with_out_file (base ^ ".po.dot")
-        (ClassificationLayout.output_post_wait_graph data.po cl (fun _ -> []));
-      with_out_file (base ^ ".red-po.dot")
-        (ClassificationLayout.output_post_wait_graph data'.po cl (fun _ -> []));
-      write_pre (base ^ ".dclpre") dcl_pre;
-      with_out_file (base ^ ".dep.dot") 
-        (ClassificationLayout.output_dependency_graph depgraph cl
-           (fun _ -> [])
-           (fun (_, lbl, _) ->
-              if lbl = None then
-                [ `Style `Solid ]
-              else
-                [ `Style `Dotted ]));
-      write_to_file (base ^ ".dom")
-        Fmt.(using (IntMap.filter_map (fun i _ -> try Some (dom i) with Not_found -> None))
-               (IntMap.pp_default ~esep:cut ~psep:(const string ": ")
-                  (box ~indent:2 pp_analysis_result)))
-        cl;
-      write_to_file (base ^ ".verdict")
-        Fmt.(IntMap.pp_default ~esep:cut ~psep:(const string ": ")
-               pp_result)
-        def;*)
-      with_out_file (base ^ ".json") (write_json def)
+  let open Filename in
+  if Sys.is_directory filename then
+    calculate_and_write_analysis log
+      use_determinism_facts
+      (basename filename)
+      (concat filename "ER_actionlog")
+      (concat filename "deterministic")
+      (fun suffix -> concat filename suffix)
+  else
+    let base = Filename.chop_suffix (Filename.basename filename) ".log" in
+    calculate_and_write_analysis log use_determinism_facts base filename
+      (base ^ ".deterministic")
+      (fun suffix -> base ^ suffix)
+
+
