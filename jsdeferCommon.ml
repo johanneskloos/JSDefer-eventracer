@@ -203,7 +203,7 @@ let calculate_and_write_analysis log use_det base intrace indet makeoutput =
       load_determinism_facts indet
     else
       IntSet.empty
-  in let (trace, cl, data, data', dcl_pre, depgraph, dom, def) =
+  in let (trace, cl, data, depgraph, dom, def) =
     CleanLog.load intrace
       |> Trace.parse_trace
       |> Domination.calculate_domination deterministic_scripts

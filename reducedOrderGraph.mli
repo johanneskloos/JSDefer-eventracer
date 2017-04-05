@@ -19,5 +19,5 @@ type trace_facts = {
 }
 val calculate :
   Trace.trace ->
-  Trace.trace * ClassifyTask.classification IntMap.t * trace_facts * trace_facts *
-  Trace.value option Trace.ReferenceMap.t * Trace.DependencyGraph.t
+  Trace.trace * ClassifyTask.classification IntMap.t * trace_facts *
+  Trace.DependencyGraph.t

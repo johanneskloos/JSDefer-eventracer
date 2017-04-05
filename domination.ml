@@ -150,9 +150,9 @@ let deferability_analysis assume_deterministic cl
       cl
 
 let calculate_domination assume_deterministic trace =
-  let (trace, cl, data, data', dcl_pre, depgraph) =
+  let (trace, cl, data', depgraph) =
     ReducedOrderGraph.calculate trace
   in let dom = calculate_domination data' cl depgraph
   in let def = deferability_analysis assume_deterministic cl data' dom
-  in (trace, cl, data, data', dcl_pre, depgraph, dom, def)
+  in (trace, cl, data', depgraph, dom, def)
 

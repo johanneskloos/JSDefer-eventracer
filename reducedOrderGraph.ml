@@ -290,5 +290,5 @@ let calculate trace =
                   script_short_timeouts = [] }
   in let (dcl_pre, data') = reduce trace.races scripts cl data
   in let depgraph = calculate_dependency_graph data'
-  in (trace, cl, data, data', dcl_pre, depgraph)
+  in (trace, cl, data', depgraph)
 
