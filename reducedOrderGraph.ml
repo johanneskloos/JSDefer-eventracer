@@ -1,6 +1,4 @@
 open Trace
-open ReadsWrites
-open PostAndWaitGraph
 
 let log_add_edge reason ref efrom eto =
   DetailLog.log
@@ -79,7 +77,9 @@ let merge_last_writes ecur (_: reference) last_write write =
     | Some w -> Some (w, ecur)
     | None -> last_write
 
-let task_step ecur { reads; writes } { dependent_reads; last_writes; graph } =
+let task_step ecur { ReadsWrites.reads; writes }
+      { dependent_reads; last_writes; graph } =
+  let open ReadsWrites in
   let graph =
     graph
       |> ReferenceMap.fold (add_rf_edge last_writes ecur) reads
@@ -144,6 +144,7 @@ let merge_successor pre ({ has_nondeterminism; has_dom_write; spec; po } as data
   }
 
 let gather_post_successors_set pred po todo =
+  let open PostAndWaitGraph in
   let rec loop succ = function
     | [] -> succ
     | v::vs ->
@@ -229,6 +230,7 @@ let merge_post_dcl scripts cl data =
     | [] -> ReferenceMap.empty
 
 let filter_graph p g =
+  let open PostAndWaitGraph in
   PostWaitGraph.empty
     |> PostWaitGraph.fold_vertex (fun v g -> if p v then
                                     PostWaitGraph.add_vertex g v

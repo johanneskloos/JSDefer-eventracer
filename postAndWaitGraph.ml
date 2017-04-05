@@ -1,4 +1,3 @@
-open ClassifyTask
 open Trace
 
 module PostWaitEdge = struct
@@ -54,7 +53,7 @@ let build_post_wait_graph trace classifier =
   in let js_tasks =
     BatList.filter_map
       (fun { id } ->
-         try if is_script (IntMap.find id classifier) then Some id else None
+         try if ClassifyTask.is_script (IntMap.find id classifier) then Some id else None
          with Not_found -> None)
       events
   in let post_graph =

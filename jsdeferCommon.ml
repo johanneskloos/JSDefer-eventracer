@@ -1,8 +1,3 @@
-open ClassifyTask
-open Trace
-open ReducedOrderGraph
-open Domination
-
 let with_out_file filename f =
   let chan = open_out filename in try
     f chan;
@@ -49,7 +44,7 @@ type summary = {
   has_dom_writes: bool;
   has_potential_nondeterminism: StringSet.t;
   assumed_deterministic: bool;
-  potential_races: RaceSet.t;
+  potential_races: ReducedOrderGraph.RaceSet.t;
 }
 
 let pp_determinism pp = function
@@ -69,12 +64,13 @@ let pp_summary pp { script_provenance; script_verdict; has_dom_writes;
                     potential_races } =
   Fmt.pf pp "%a@,%a@,Has DOM writes: %b@,Non-determinism: %a@,Races: %a@,"
     pp_provenance script_provenance
-    pp_verdict script_verdict.verdict
+    Domination.pp_verdict script_verdict.Domination.verdict
     has_dom_writes
     pp_determinism (has_potential_nondeterminism, assumed_deterministic)
-    pp_races potential_races
+    ReducedOrderGraph.pp_races potential_races
 
 let lookup_url trace script =
+  let open Trace in
   let commands = IntMap.find script trace
   in let rec find = function
     | Enter (JSCode { source }) :: _ -> source
@@ -85,23 +81,24 @@ let lookup_url trace script =
 
 let summarize_one assumed trace cl data script result =
   let script_class = IntMap.find script cl in
-    assert (is_toplevel_script script_class);
+    assert (ClassifyTask.is_toplevel_script script_class);
     let script_provenance = match script_class with
-      | InlineScript -> ScriptInline
-      | ExternalSyncScript -> ScriptSynchronous (lookup_url trace script)
-      | ExternalAsyncScript -> ScriptAsynchronous (lookup_url trace script)
-      | ExternalDeferScript -> ScriptDeferred (lookup_url trace script)
-      | ExternalUnknownScript -> ScriptOther (lookup_url trace script)
+      | ClassifyTask.InlineScript -> ScriptInline
+      | ClassifyTask.ExternalSyncScript -> ScriptSynchronous (lookup_url trace script)
+      | ClassifyTask.ExternalAsyncScript -> ScriptAsynchronous (lookup_url trace script)
+      | ClassifyTask.ExternalDeferScript -> ScriptDeferred (lookup_url trace script)
+      | ClassifyTask.ExternalUnknownScript -> ScriptOther (lookup_url trace script)
       | _ -> assert false
     and script_verdict = result
-    and has_dom_writes = IntSet.mem script data.has_dom_write
+    and has_dom_writes = IntSet.mem script data.ReducedOrderGraph.has_dom_write
     and assumed_deterministic = IntSet.mem script assumed
     and has_potential_nondeterminism = try
-      IntMap.find script data.has_nondeterminism
+      IntMap.find script data.ReducedOrderGraph.has_nondeterminism
     with Not_found -> StringSet.empty
     and potential_races =
-      RaceSet.filter (fun { script = script' } -> script = script')
-        data.potential_races
+      ReducedOrderGraph.RaceSet.filter
+        (fun { ReducedOrderGraph.script = script' } -> script = script')
+        data.ReducedOrderGraph.potential_races
     in Logs.info (fun k -> k "Adding script %d" script);
        { script_provenance; script_verdict;
          has_dom_writes; assumed_deterministic;
@@ -116,7 +113,7 @@ type page_summary = {
 
 let calculate_deferables per_script =
   IntMap.fold (fun script { script_provenance; script_verdict } defs ->
-                 if script_verdict.verdict = Deferable then
+                 if script_verdict.Domination.verdict = Domination.Deferable then
                    (script, script_provenance) :: defs
                  else
                    defs)
@@ -125,6 +122,7 @@ let calculate_deferables per_script =
 let summarize base assumed trace cl data depgraph result =
   (* Do a per-script summary *)
   let trace_map =
+    let open Trace in
     List.fold_left
       (fun trace_map { commands; id } -> IntMap.add id commands trace_map)
       IntMap.empty trace.events
@@ -152,7 +150,7 @@ let short_str_provenance = function
   | ScriptAsynchronous src -> "async " ^ src
   | ScriptDeferred src -> "defer " ^ src
   | ScriptOther src -> "other " ^ src
-let short_str_verdict = function
+let short_str_verdict = let open Domination in function
   | Deferable -> "deferable"
   | Deferred -> "deferred"
   | HasDOMAccess -> "DOM access"
@@ -162,8 +160,8 @@ let short_str_verdict = function
   | DominatedByInlineScript -> "<- inline"
   | DominatedByAsyncScript -> "<- async"
   | Nondeterministic -> "nondet"
-let pp_short_race pp { script_ev; racing_ev; refs } =
-  Fmt.pf pp "%d-%d@%a" script_ev racing_ev pp_reference refs
+let pp_short_race pp { ReducedOrderGraph.script_ev; racing_ev; refs } =
+  Fmt.pf pp "%d-%d@%a" script_ev racing_ev Trace.pp_reference refs
 let make_row name id { script_provenance; script_verdict; has_dom_writes;
                        assumed_deterministic; has_potential_nondeterminism;
                        potential_races } =
@@ -172,11 +170,11 @@ let make_row name id { script_provenance; script_verdict; has_dom_writes;
     name;
     string_of_int id;
     short_str_provenance script_provenance;
-    short_str_verdict script_verdict.verdict;
+    short_str_verdict script_verdict.Domination.verdict;
     if has_dom_writes then "has DOM writes!" else "-";
     if assumed_deterministic then "assumed deterministic!" else "-";
     strf "@[<h>%a@]" (iter ~sep:sp StringSet.iter string) has_potential_nondeterminism;
-    strf "@[<h>%a@]" (iter ~sep:sp RaceSet.iter pp_short_race) potential_races
+    strf "@[<h>%a@]" (iter ~sep:sp ReducedOrderGraph.RaceSet.iter pp_short_race) potential_races
   ]
 
 let csv_page_summary { per_script; name } chan =

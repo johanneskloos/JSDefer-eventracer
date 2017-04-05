@@ -1,5 +1,4 @@
 open Trace
-open ReducedOrderGraph
 
 type analysis_result = {
   dom_accesses: IntSet.t;
@@ -53,7 +52,7 @@ end
 module DominationAnalysis =
   Graph.Fixpoint.Make(DependencyGraph)(AnalysisStrategy)
 let calculate_domination
-      { has_nondeterminism; has_dom_write } cl
+      { ReducedOrderGraph.has_nondeterminism; has_dom_write } cl
       depgraph =
   Logs.debug ~src:!Log.source (fun m -> m "Calculating domination facts");
   try
@@ -122,7 +121,8 @@ let pp_result pp { verdict; nondet; data } =
           pf pp "%a"
             pp_verdict verdict
 
-let deferability_analysis assume_deterministic cl { has_nondeterminism } dom =
+let deferability_analysis assume_deterministic cl
+      { ReducedOrderGraph.has_nondeterminism } dom =
   Logs.debug ~src:!Log.source (fun m -> m "Performing deferability analysis");
   let open ClassifyTask in
     IntMap.filter_map
@@ -151,7 +151,7 @@ let deferability_analysis assume_deterministic cl { has_nondeterminism } dom =
 
 let calculate_domination assume_deterministic trace =
   let (trace, cl, data, data', dcl_pre, depgraph) =
-    calculate trace
+    ReducedOrderGraph.calculate trace
   in let dom = calculate_domination data' cl depgraph
   in let def = deferability_analysis assume_deterministic cl data' dom
   in (trace, cl, data, data', dcl_pre, depgraph, dom, def)
