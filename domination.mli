@@ -22,9 +22,19 @@ val pp_verdict : verdict Fmt.t
 type result = { verdict : verdict; nondet : bool; data : analysis_result; }
 val pp_result : result Fmt.t
 
+type domination_facts = {
+  trace: Trace.trace;
+  classification: ClassifyTask.classification IntMap.t;
+  has_dom_write : IntSet.t;
+  has_nondeterminism : StringSet.t IntMap.t;
+  spec : ReadsWrites.event_standalone_spec IntMap.t;
+  po : PostAndWaitGraph.PostWaitGraph.t;
+  potential_races : ReducedOrderGraph.RaceSet.t;
+  script_short_timeouts : int list;
+  dependency_graph: Trace.DependencyGraph.t;
+  verdicts: result IntMap.t
+}
 val calculate_domination :
   IntSet.t ->
   Trace.trace ->
-  Trace.trace * ClassifyTask.classification IntMap.t *
-  ReducedOrderGraph.trace_facts * Trace.DependencyGraph.t *
-  (int -> analysis_result) * result IntMap.t
+  domination_facts

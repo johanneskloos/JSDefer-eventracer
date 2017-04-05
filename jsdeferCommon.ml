@@ -79,7 +79,7 @@ let lookup_url trace script =
             "<unknown>"
   in find commands
 
-let summarize_one assumed trace cl data script result =
+let summarize_one assumed trace cl has_dom_write has_nondeterminism potential_races script result =
   let script_class = IntMap.find script cl in
     assert (ClassifyTask.is_toplevel_script script_class);
     let script_provenance = match script_class with
@@ -90,15 +90,15 @@ let summarize_one assumed trace cl data script result =
       | ClassifyTask.ExternalUnknownScript -> ScriptOther (lookup_url trace script)
       | _ -> assert false
     and script_verdict = result
-    and has_dom_writes = IntSet.mem script data.ReducedOrderGraph.has_dom_write
+    and has_dom_writes = IntSet.mem script has_dom_write
     and assumed_deterministic = IntSet.mem script assumed
     and has_potential_nondeterminism = try
-      IntMap.find script data.ReducedOrderGraph.has_nondeterminism
+      IntMap.find script has_nondeterminism
     with Not_found -> StringSet.empty
     and potential_races =
       ReducedOrderGraph.RaceSet.filter
         (fun { ReducedOrderGraph.script = script' } -> script = script')
-        data.ReducedOrderGraph.potential_races
+        potential_races
     in Logs.info (fun k -> k "Adding script %d" script);
        { script_provenance; script_verdict;
          has_dom_writes; assumed_deterministic;
@@ -119,14 +119,14 @@ let calculate_deferables per_script =
                    defs)
     per_script []
 
-let summarize base assumed trace cl data depgraph result =
+let summarize base assumed trace cl has_dom_write has_nondeterminism potential_races depgraph result =
   (* Do a per-script summary *)
   let trace_map =
     let open Trace in
     List.fold_left
       (fun trace_map { commands; id } -> IntMap.add id commands trace_map)
       IntMap.empty trace.events
-  in let per_script = IntMap.mapi (summarize_one assumed trace_map cl data) result
+  in let per_script = IntMap.mapi (summarize_one assumed trace_map cl has_dom_write has_nondeterminism potential_races) result
   in { per_script; name = base; deferables = calculate_deferables per_script }
 
 let pp_script_summary pp (script, summary) =
@@ -203,12 +203,13 @@ let calculate_and_write_analysis log use_det base intrace indet makeoutput =
       load_determinism_facts indet
     else
       IntSet.empty
-  in let (trace, cl, data, depgraph, dom, def) =
+  in let { Domination.trace; classification; has_dom_write; has_nondeterminism; potential_races;
+           dependency_graph; verdicts } =
     CleanLog.load intrace
       |> Trace.parse_trace
       |> Domination.calculate_domination deterministic_scripts
   in let summary =
-    summarize base deterministic_scripts trace cl data depgraph def
+    summarize base deterministic_scripts trace classification has_dom_write has_nondeterminism potential_races dependency_graph verdicts
   in
     write_to_file (makeoutput "result") pp_page_summary summary;
     with_out_file (makeoutput "result.csv") (csv_page_summary summary);

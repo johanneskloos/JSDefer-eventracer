@@ -114,12 +114,15 @@ let pp_races =
     iter ~sep:(suffix sp (const string ";")) RaceSet.iter pp_race
 
 type trace_facts = {
+  trace: Trace.trace;
+  classification: ClassifyTask.classification IntMap.t;
   has_dom_write: IntSet.t;
   has_nondeterminism: StringSet.t IntMap.t;
   spec: ReadsWrites.event_standalone_spec IntMap.t;
   po: PostAndWaitGraph.PostWaitGraph.t;
   potential_races: RaceSet.t;
   script_short_timeouts: int list;
+  dependency_graph: Trace.DependencyGraph.t
 }
 
 module MergePO = Graph.Merge.P(PostAndWaitGraph.PostWaitGraph)
@@ -240,14 +243,12 @@ let filter_graph p g =
                                        PostWaitGraph.add_edge_e g e
                                      else g) g
 let filter_irrelevant scripts
-      { has_dom_write; has_nondeterminism; spec; po;
-        potential_races; script_short_timeouts } =
-  { has_dom_write = IntSet.inter has_dom_write scripts;
+      ({ has_dom_write; has_nondeterminism; spec; po } as data) =
+  { data with
+    has_dom_write = IntSet.inter has_dom_write scripts;
     has_nondeterminism = IntMap.filter (fun v _ -> IntSet.mem v scripts) has_nondeterminism;
     spec = IntMap.filter (fun v _ -> IntSet.mem v scripts) spec;
-    po = filter_graph (fun v -> IntSet.mem v scripts) po;
-    potential_races;
-    script_short_timeouts }
+    po = filter_graph (fun v -> IntSet.mem v scripts) po }
 
 let reduce races scripts cl data =
   Logs.debug ~src:!Log.source (fun m -> m "Reducing scripts");
@@ -285,10 +286,12 @@ let calculate trace =
   and spec = ReadsWrites.per_event_specification trace
   and po = PostAndWaitGraph.build_post_wait_graph trace cl
   and scripts = find_scripts cl
-  in let data = { has_dom_write; has_nondeterminism;
+  in let data = { trace; classification = cl;
+                  has_dom_write; has_nondeterminism;
                   spec; po; potential_races = RaceSet.empty;
-                  script_short_timeouts = [] }
-  in let (dcl_pre, data') = reduce trace.races scripts cl data
+                  script_short_timeouts = [];
+                  dependency_graph = DependencyGraph.empty }
+  in let (_, data') = reduce trace.races scripts cl data
   in let depgraph = calculate_dependency_graph data'
-  in (trace, cl, data', depgraph)
+  in { data with dependency_graph = depgraph }
 

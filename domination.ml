@@ -51,9 +51,7 @@ end
 
 module DominationAnalysis =
   Graph.Fixpoint.Make(DependencyGraph)(AnalysisStrategy)
-let calculate_domination
-      { ReducedOrderGraph.has_nondeterminism; has_dom_write } cl
-      depgraph =
+let calculate_domination has_nondeterminism has_dom_write cl depgraph =
   Logs.debug ~src:!Log.source (fun m -> m "Calculating domination facts");
   try
     let cond_singleton p v =
@@ -121,8 +119,7 @@ let pp_result pp { verdict; nondet; data } =
           pf pp "%a"
             pp_verdict verdict
 
-let deferability_analysis assume_deterministic cl
-      { ReducedOrderGraph.has_nondeterminism } dom =
+let deferability_analysis assume_deterministic cl has_nondeterminism dom =
   Logs.debug ~src:!Log.source (fun m -> m "Performing deferability analysis");
   let open ClassifyTask in
     IntMap.filter_map
@@ -149,10 +146,29 @@ let deferability_analysis assume_deterministic cl
          with Exit -> None | Not_found -> None)
       cl
 
+type domination_facts = {
+  trace: Trace.trace;
+  classification: ClassifyTask.classification IntMap.t;
+  has_dom_write : IntSet.t;
+  has_nondeterminism : StringSet.t IntMap.t;
+  spec : ReadsWrites.event_standalone_spec IntMap.t;
+  po : PostAndWaitGraph.PostWaitGraph.t;
+  potential_races : ReducedOrderGraph.RaceSet.t;
+  script_short_timeouts : int list;
+  dependency_graph: Trace.DependencyGraph.t;
+  verdicts: result IntMap.t
+}
 let calculate_domination assume_deterministic trace =
-  let (trace, cl, data', depgraph) =
-    ReducedOrderGraph.calculate trace
-  in let dom = calculate_domination data' cl depgraph
-  in let def = deferability_analysis assume_deterministic cl data' dom
-  in (trace, cl, data', depgraph, dom, def)
+  let open ReducedOrderGraph in
+  let { trace; classification; has_dom_write; has_nondeterminism;
+        spec; po; potential_races; script_short_timeouts;
+        dependency_graph } = ReducedOrderGraph.calculate trace
+  in let dom =
+    calculate_domination has_nondeterminism has_dom_write
+      classification dependency_graph
+  in let def = deferability_analysis assume_deterministic
+                 classification has_nondeterminism dom
+  in { trace; classification; has_dom_write; has_nondeterminism;
+       spec; po; potential_races; script_short_timeouts;
+       dependency_graph; verdicts = def }
 
