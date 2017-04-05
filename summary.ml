@@ -49,7 +49,7 @@ let lookup_url trace script =
   in let rec find = function
     | Enter (JSCode { source }) :: _ -> source
     | _ :: rest -> find rest
-    | [] -> Logs.err (fun k -> k "Can't find URL for script %d, adding dummy" script);
+    | [] -> Log.err (fun k -> k "Can't find URL for script %d, adding dummy" script);
             "<unknown>"
   in find commands
 
@@ -73,7 +73,7 @@ let summarize_one assumed trace cl has_dom_write has_nondeterminism potential_ra
       Races.RaceSet.filter
         (fun { Races.script = script' } -> script = script')
         potential_races
-    in Logs.info (fun k -> k "Adding script %d" script);
+    in Log.info (fun k -> k "Adding script %d" script);
        { script_provenance; script_verdict;
          has_dom_writes; assumed_deterministic;
          has_potential_nondeterminism;

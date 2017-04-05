@@ -21,6 +21,11 @@ let improved_reporter () =
            fmt
      in { Logs.report }
 
+let warn: 'a Logs.log = fun f -> Logs.warn ~src:!source f
+let err: 'a Logs.log = fun f -> Logs.err ~src:!source f
+let debug: 'a Logs.log = fun f -> Logs.debug ~src:!source f
+let info: 'a Logs.log = fun f -> Logs.info ~src:!source f
+
 let () =
   Logs.set_reporter (improved_reporter ());
   Logs.set_level ~all:true (Some Logs.Info);

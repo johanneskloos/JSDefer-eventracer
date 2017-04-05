@@ -605,7 +605,7 @@ let pp_pcre_error pp = let open Pcre in let open Fmt in function
   | InternalError e -> string pp e
 
 let parse_trace { CleanLog.events; deps; races } =
-  Logs.debug ~src:!Log.source (fun m -> m "Parsing trace");
+  Log.debug (fun m -> m "Parsing trace");
   try
       { deps; events = BatList.map parse_event events;
       races =
@@ -618,7 +618,7 @@ let parse_trace { CleanLog.events; deps; races } =
               else None)
           races }
   with Pcre.Error err as e ->
-    Logs.err (fun m -> m "PCRE error: %a" pp_pcre_error err);
+    Log.err (fun m -> m "PCRE error: %a" pp_pcre_error err);
     raise e
 
 let pp_event_with_deps deps pp { evtype; id; commands } =

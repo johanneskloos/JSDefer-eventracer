@@ -1,12 +1,12 @@
+let log = ref false
+let use_determinism_facts = ref false
+
 let load_determinism_facts filename =
   try
     BatFile.lines_of filename |> BatEnum.fold
       (fun known_det str -> IntSet.add (int_of_string str) known_det)
       IntSet.empty
   with _ -> IntSet.empty
-
-let log = ref false
-let use_determinism_facts = ref false
 
 let calculate_and_write_analysis base intrace indet makeoutput =
   if !log then DetailLog.open_log (open_out (makeoutput ".details"));

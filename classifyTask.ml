@@ -125,8 +125,7 @@ let update_animation_requests (outer_state, inner_state) = function
   | Read (RHeap { id } , _)
       when List.mem id outer_state.animation_frame_request_functions ->
       if inner_state.type_known = None then
-        Logs.warn ~src:!Log.source
-          (fun m -> m "Warning: Saw potential animation request outside JS code");
+        Log.warn (fun m -> m "Warning: Saw potential animation request outside JS code");
       (outer_state,
        { inner_state with potential_animation_request = true })
   | Read (RHeap { objtype = "Window";
@@ -165,8 +164,7 @@ let find_event_type = function
   | "CookieEventAPI" | "readystatechange" | "Resolved"
   | "wtBeaconSent" -> ResourceEvent
   | s -> 
-      Logs.warn ~src:!Log.source
-        (fun m -> m "Unknown event type %s, guessing U." s);
+      Log.warn (fun m -> m "Unknown event type %s, guessing U." s);
          UIEvent
 
 let update_event_kind inner_state cmd =
@@ -226,7 +224,7 @@ let update_type_known outer_state inner_state cmd =
             Some e ->
               { inner_state with type_known = Some (from_event_type e) }
           | None ->
-              Logs.err ~src:!Log.source
+              Log.err
                 (fun m -> m "@[<v2>Can't classify script type (toplevel)@,inner state: @[<hov>%a@]@,outer state: @[<hov>%a@]@,@]@."
                             pp_inner_state inner_state pp_state outer_state);
               { inner_state with type_known = Some UnclearScript }
@@ -238,7 +236,7 @@ let update_type_known outer_state inner_state cmd =
             Some e ->
               { inner_state with type_known = Some (from_event_type e) }
           | None ->
-              Logs.err ~src:!Log.source
+              Log.err
                 (fun m -> m "@[<v2>Can't classify script type (reference)@,inner state: @[<hov>%a@]@,outer state: @[<hov>%a@]@,@]@."
                             pp_inner_state inner_state pp_state outer_state);
               { inner_state with type_known = Some UnclearScript }
@@ -360,7 +358,7 @@ let remove_junk { events; deps; races } =
   in loop deps events
 
 let classify trace =
-  Logs.debug ~src:!Log.source (fun m -> m "Classifying tasks");
+  Log.debug (fun m -> m "Classifying tasks");
   let trace = remove_junk trace
   in (trace, (collect trace).classification)
 

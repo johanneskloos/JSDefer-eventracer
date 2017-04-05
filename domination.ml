@@ -52,7 +52,7 @@ end
 module DominationAnalysis =
   Graph.Fixpoint.Make(DependencyGraph)(AnalysisStrategy)
 let calculate_domination has_nondeterminism has_dom_write cl depgraph =
-  Logs.debug ~src:!Log.source (fun m -> m "Calculating domination facts");
+  Log.debug (fun m -> m "Calculating domination facts");
   try
     let cond_singleton p v =
       if p then IntSet.singleton v else IntSet.empty

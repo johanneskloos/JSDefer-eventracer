@@ -17,12 +17,12 @@ let warn_read_incompatibility v1 v2 =
   match v1, v2 with
     | None, _ -> ()
     | Some v1, None ->
-        Logs.warn ~src:!Log.source
+        Log.warn
           (fun m -> m "Warning: Reading specific value %a from undetermined read"
                       pp_value v1)
     | Some v1, Some v2 ->
         if v1 <> v2 then
-          Logs.warn ~src:!Log.source
+          Log.warn
             (fun m -> m "Warning: Nondeterministic read, got both %a and %a"
                         pp_value v1 pp_value v2)
 
@@ -87,7 +87,7 @@ let task_step ecur { ReadsWrites.reads; writes }
   in { graph; dependent_reads; last_writes }
 
 let calculate_dependency_graph spec =
-  Logs.debug ~src:!Log.source (fun m -> m "Calculating dependency graph");
+  Log.debug (fun m -> m "Calculating dependency graph");
   let { graph } =
     IntMap.fold task_step spec
       { graph = DependencyGraph.empty;

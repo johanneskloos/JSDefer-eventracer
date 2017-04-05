@@ -46,7 +46,7 @@ let pp_result pp { verdict; nondet; data } =
             pp_verdict verdict
 
 let deferability_analysis assume_deterministic cl has_nondeterminism dom =
-  Logs.debug ~src:!Log.source (fun m -> m "Performing deferability analysis");
+  Log.debug (fun m -> m "Performing deferability analysis");
   let open ClassifyTask in
     IntMap.filter_map
       (fun v vc ->
@@ -63,7 +63,7 @@ let deferability_analysis assume_deterministic cl has_nondeterminism dom =
              | ExternalAsyncScript -> IsAsyncScript
              | ExternalDeferScript -> Deferred
              | InlineScript -> IsInlineScript
-             | UnclearScript -> Logs.err ~src:!Log.source
+             | UnclearScript -> Log.err
                                   (fun m -> m "Script %d has unclear script type, guessing inline" v);
                                 IsInlineScript
              | _ -> raise Exit

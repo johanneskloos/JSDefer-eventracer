@@ -79,7 +79,7 @@ let merge_successors_for races v cl data =
       data.potential_races
   and script_short_timeouts = short_timeouts @ data.script_short_timeouts
   in log_succs "script (immediate)" v immediates;
-     Logs.debug ~src:!Log.source
+     Log.debug
        (fun m -> m "@[<hov 4>potential races: %a]" Races.pp_races potential_races);
     BatList.fold_left (merge_successor v)
        { data with potential_races; script_short_timeouts } immediates
@@ -137,9 +137,9 @@ let filter_irrelevant scripts
     po = filter_graph (fun v -> IntSet.mem v scripts) po }
 
 let reduce races scripts cl data =
-  Logs.debug ~src:!Log.source (fun m -> m "Reducing scripts");
+  Log.debug (fun m -> m "Reducing scripts");
   let data' = merge_successors_scripts races scripts cl data
-  in Logs.debug ~src:!Log.source (fun m -> m "@[<hov 4>Races: %a@]"
+  in Log.debug (fun m -> m "@[<hov 4>Races: %a@]"
                                              Races.pp_races data'.potential_races);
       filter_irrelevant
         (IntSet.filter
@@ -148,7 +148,7 @@ let reduce races scripts cl data =
            scripts) data'
 
 let find_scripts cl =
-  Logs.debug ~src:!Log.source (fun m -> m "Finding scripts");
+  Log.debug (fun m -> m "Finding scripts");
   IntMap.fold (fun v vc scripts ->
                  if ClassifyTask.is_script vc then
                    IntSet.add v scripts

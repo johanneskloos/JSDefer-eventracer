@@ -28,7 +28,7 @@ let per_event_reads commands =
                 | Some value' when value = value' ->
                     Some value
                 | Some value' ->
-                    Logs.warn ~src:!Log.source
+                    Log.warn
                       (fun m -> m "Non-deterministic reading of %a: %a vs. %a"
                                   pp_reference ref pp_value value pp_value value');
                     None)
@@ -65,7 +65,7 @@ let per_event_specification specs { id; commands } =
   in IntMap.add id { reads; writes; posts } specs
 
 let per_event_specification { events } =
-  Logs.debug ~src:!Log.source (fun m -> m "Calculating per-event specification");
+  Log.debug (fun m -> m "Calculating per-event specification");
   List.fold_left per_event_specification IntMap.empty events
 
 (* [combine_reads_writes spec1 spec2] performs sequential
