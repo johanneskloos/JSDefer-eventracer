@@ -129,6 +129,18 @@ let short_str_provenance = function
   | ScriptAsynchronous src -> "async " ^ src
   | ScriptDeferred src -> "defer " ^ src
   | ScriptOther src -> "other " ^ src
+let short_str_provenance_type = function
+  | ScriptInline -> "inline"
+  | ScriptSynchronous _ -> "sync"
+  | ScriptAsynchronous _ -> "async"
+  | ScriptDeferred _ -> "defer"
+  | ScriptOther _ -> "other"
+let str_provenance_source = function
+  | ScriptInline -> "<inline>"
+  | ScriptSynchronous src
+  | ScriptAsynchronous src
+  | ScriptDeferred src
+  | ScriptOther src -> src
 let short_str_verdict = let open Deferability in function
   | Deferable -> "deferable"
   | Deferred -> "deferred"
@@ -140,6 +152,10 @@ let short_str_verdict = let open Deferability in function
   | DominatedByAsyncScript -> "<- async"
   | Nondeterministic -> "nondet"
   | Racing -> "racy"
+let re_query_string = Str.regexp "?.*"
+let short_str_provenance_source s =
+  Str.replace_first re_query_string "?<query string>" (str_provenance_source s)
+
 let pp_short_race pp { Races.script_ev; racing_ev; refs } =
   Fmt.pf pp "%d-%d@%a" script_ev racing_ev Trace.pp_reference refs
 let make_row name id { script_provenance; script_verdict; has_dom_writes;
@@ -149,30 +165,33 @@ let make_row name id { script_provenance; script_verdict; has_dom_writes;
     [
       name;
       string_of_int id;
-      short_str_provenance script_provenance;
+      short_str_provenance_type script_provenance;
+      short_str_provenance_source script_provenance;
       short_str_verdict script_verdict;
       if has_dom_writes then "has DOM writes!" else "-";
       if assumed_deterministic then "assumed deterministic!" else "-";
       strf "@[<h>%a@]" (iter ~sep:sp StringSet.iter string)
         has_potential_nondeterminism;
       strf "@[<h>%a@]" (iter ~sep:sp Races.RaceSet.iter pp_short_race)
-        potential_races
+        potential_races;
+      str_provenance_source script_provenance;
     ]
 
 let csv_page_summary { per_script; name } chan =
   let open Csv in
     output_all (to_channel chan) @@
     IntMap.fold (fun id data rows -> make_row name id data :: rows)
-      per_script []
+      per_script [[
+        "Page"; "Script #"; "Load"; "Address"; "Verdict"; "DOM writes";
+        "Assumed det?"; "Nondeterminism"; "URL"
+      ]]
 
-let re_query_string = Str.regexp "?.*"
 let url = function
   | ScriptInline -> "???"
   | ScriptSynchronous s
   | ScriptAsynchronous s
   | ScriptDeferred s
-  | ScriptOther s ->
-      Str.replace_first re_query_string "?<query string>" s
+  | ScriptOther s -> s
 
 let pp_defer pp { deferables } =
   let open Fmt in
