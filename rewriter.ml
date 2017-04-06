@@ -1,33 +1,50 @@
-let re_tab = Str.regexp "\t"
+type task = { url: Uri.t; defer: bool }
 
-let parse_script_list filename =
-  BatFile.lines_of filename
-    |> BatEnum.map (fun line -> match Str.bounded_split re_tab line 2 with
-                      | [num; url] -> (int_of_string num, url)
-                      | _ -> failwith ("Can't parse line " ^ line))
-    |> BatList.of_enum
-    |> BatList.sort (fun (ord1, _) (ord2, _) -> compare ord1 ord2)
-    |> BatList.map snd
+let canonical_uri url =
+  let open Uri in
+    with_scheme (of_string url) (Some "http") |> canonicalize
 
-let transform_html scripts document =
+let read_tasks base =
+  let csv = Csv.load (Filename.concat base "result.csv") in
+    BatList.filter_map
+      (function
+         | [_; id; "sync"; _; verdict; _; _; _; _; url ] ->
+             Some (int_of_string id, (url, verdict = "deferable"))
+         | _ -> None)
+      csv
+    |> BatList.sort (fun (id1, _) (id2, _) -> compare id1 id2)
+    |> BatList.map (fun (_, (url, defer)) -> { url = canonical_uri url; defer })
+
+let resolve_uri base url =
+  let open Uri in resolve "http" base (of_string url) |> canonicalize
+
+let extract_sync_scripts base_url scripts =
   let open Soup in
-  let todo_list = ref scripts 
-  and script_elements = document $$ "script"
-  in iter (fun elt ->
-             match !todo_list with
-               | wanted :: rest ->
-                   if attribute "src" elt = Some wanted then begin
-                     todo_list := rest;
-                     set_attribute "defer" "" elt
-                   end
-               | [] -> ())
-       script_elements;
-  if !todo_list <> [] then failwith "Couldn't defer all scripts"
-                           
-let defer_directory dir =
-  let open Filename in
+    scripts
+    |> filter (fun node -> has_attribute "src" node &&
+                           not (has_attribute "async" node) &&
+                           not (has_attribute "defer" node))
+    |> fold (fun scripts node -> (R.attribute "src" node, node) :: scripts) []
+    |> BatList.rev_map (fun (url, node) -> (resolve_uri base_url url, node))
+
+let rec apply_tasks tasks reals =
+  match tasks, reals with
+    | { url=url1; defer } :: tasks, (url2, node)::reals when url1 = url2 ->
+        if defer then Soup.set_attribute "defer" "" node;
+        apply_tasks tasks reals
+    | _ :: tasks, reals -> apply_tasks tasks reals
+    | [], [] -> ()
+    | [], _::_ ->
+        failwith "Left-over scripts after all tasks have been considered"
+
+let process base =
   let open Soup in
-  let scripts = parse_script_list (concat dir "defer")
-  and document = read_file (concat dir "index.html") |> parse
-  in transform_html scripts document;
-     to_string document |> write_file (concat dir "index.defer.html")
+  let tasks = read_tasks base
+  and document = read_file (Filename.concat base "index.html") |> parse in
+    begin document $$ "script"
+    |> extract_sync_scripts (Uri.of_string (Filename.basename base))
+    |> apply_tasks tasks
+    end;
+    to_string document |> write_file (Filename.concat base "index.deferred.html")
+
+let () = Arg.parse [] process "rewrite directories"
