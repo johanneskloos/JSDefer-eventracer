@@ -1,2 +1,3 @@
-PKG ocamlgraph batteries fmt eventracer ppx_deriving.ord ppx_deriving.show yojson logs csv
+PKG ocamlgraph batteries fmt eventracer ppx_deriving.ord ppx_deriving.show
+PKG yojson logs csv sqlite3
 B _build
