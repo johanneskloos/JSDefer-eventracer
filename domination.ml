@@ -4,7 +4,8 @@ type analysis_result = {
   dom_accesses: IntSet.t;
   inline_scripts: IntSet.t;
   async_scripts: IntSet.t;
-  nondet: StringSet.t
+  nondet: StringSet.t;
+  races_with : Races.RaceSet.t
 }
 let pp_analysis_result pp { dom_accesses; inline_scripts; async_scripts } =
   let open Fmt in
@@ -27,24 +28,26 @@ module AnalysisStrategy = struct
   type g = DependencyGraph.t
   let direction = Graph.Fixpoint.Backward
   let join
-        { dom_accesses = d1; nondet = n1;
+        { dom_accesses = d1; nondet = n1; races_with = r1;
           inline_scripts = i1; async_scripts = a1 }
-        { dom_accesses = d2; nondet = n2;
+        { dom_accesses = d2; nondet = n2; races_with = r2;
           inline_scripts = i2; async_scripts = a2 } =
     { dom_accesses = IntSet.union d1 d2;
       inline_scripts = IntSet.union i1 i2;
       async_scripts = IntSet.union a1 a2;
-      nondet = StringSet.union n1 n2
+      nondet = StringSet.union n1 n2;
+      races_with = Races.RaceSet.union r1 r2
     }
   let equal 
-        { dom_accesses = d1; nondet = n1;
+        { dom_accesses = d1; nondet = n1; races_with = r1;
           inline_scripts = i1; async_scripts = a1 }
-        { dom_accesses = d2; nondet = n2;
+        { dom_accesses = d2; nondet = n2; races_with = r2;
           inline_scripts = i2; async_scripts = a2 } =
     IntSet.equal d1 d2 &&
       IntSet.equal i1 i2 &&
       IntSet.equal a1 a2 &&
-      StringSet.equal n1 n2
+      StringSet.equal n1 n2 &&
+      Races.RaceSet.equal r1 r2
 
   let analyze (_: edge) (r: analysis_result) = r
 end
@@ -100,7 +103,7 @@ let reflexive_closure g =
   DependencyGraph.fold_vertex (fun v g -> DependencyGraph.add_edge g v v)
     g g
 
-let calculate_domination has_nondeterminism has_dom_write cl depgraph =
+let calculate_domination has_nondeterminism has_dom_write races cl depgraph =
   Log.debug (fun m -> m "Calculating domination facts");
   try
     let cond_singleton p v =
@@ -108,18 +111,22 @@ let calculate_domination has_nondeterminism has_dom_write cl depgraph =
     in let maybe_singleton s v =
       cond_singleton (IntSet.mem v s) v
     in let result = DominationAnalysis.analyze
-         (fun v ->
-            let open ClassifyTask in
-              { dom_accesses = maybe_singleton has_dom_write v;
-                inline_scripts =
-                  cond_singleton (IntMap.find v cl = InlineScript) v;
-                async_scripts =
-                  cond_singleton (IntMap.find v cl = ExternalAsyncScript) v;
-                nondet =
-                  try IntMap.find v has_nondeterminism
-                  with Not_found -> StringSet.empty 
-              })
-         (reflexive_closure depgraph)
+                      (fun v ->
+                         let open ClassifyTask in
+                           { races_with =
+                           Races.RaceSet.filter
+                             (fun { Races.script_ev } -> script_ev = v)
+                             races;
+                             dom_accesses = maybe_singleton has_dom_write v;
+                             inline_scripts =
+                               cond_singleton (IntMap.find v cl = InlineScript) v;
+                             async_scripts =
+                               cond_singleton (IntMap.find v cl = ExternalAsyncScript) v;
+                             nondet =
+                               try IntMap.find v has_nondeterminism
+                               with Not_found -> StringSet.empty 
+                           })
+                      (reflexive_closure depgraph)
     in sanity_check has_nondeterminism has_dom_write cl depgraph result;
        result
   with Not_found ->

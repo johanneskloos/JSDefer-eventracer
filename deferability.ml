@@ -97,7 +97,7 @@ let calculate_deferability assume_deterministic trace =
         dependency_graph } = ReducedOrderGraph.calculate trace
   in let dom =
     Domination.calculate_domination has_nondeterminism has_dom_write
-      classification dependency_graph
+      potential_races classification dependency_graph
   in let def = deferability_analysis assume_deterministic
                  classification has_nondeterminism dom
   in { trace; classification; has_dom_write; has_nondeterminism;
