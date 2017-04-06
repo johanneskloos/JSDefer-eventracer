@@ -8,12 +8,12 @@ type verdict =
   | DominatedByInlineScript
   | DominatedByAsyncScript
   | Nondeterministic
+  | Racing
 val verdict_to_string : verdict -> string
 val pp_verdict : verdict Fmt.t
 
 type result = {
   verdict : verdict;
-  nondet : bool;
   data : Domination.analysis_result; }
 val pp_result : result Fmt.t
 

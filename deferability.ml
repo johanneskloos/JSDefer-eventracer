@@ -12,6 +12,7 @@ type verdict =
   | DominatedByInlineScript
   | DominatedByAsyncScript
   | Nondeterministic
+  | Racing
 
 let verdict_to_string = function
     (* Deferable cases *)
@@ -25,14 +26,14 @@ let verdict_to_string = function
   | DominatedByInlineScript -> "dominated by an inline script"
   | DominatedByAsyncScript -> "dominated by an async script"
   | Nondeterministic -> "potentially nondeterministic"
+  | Racing -> "involved in a race condition"
 let pp_verdict = Fmt.using verdict_to_string Fmt.string
 
 type result = {
   verdict: verdict;
-  nondet: bool;
   data: Domination.analysis_result
 }
-let pp_result pp { verdict; nondet; data } =
+let pp_result pp { verdict; data } =
   let open Fmt in
     match verdict with
       | DominatedByDOMAccess
@@ -46,11 +47,12 @@ let pp_result pp { verdict; nondet; data } =
             pp_verdict verdict
 
 let classify_script assume_deterministic v
-      { Domination.dom_accesses; inline_scripts; async_scripts; nondet } =
+      { Domination.dom_accesses; inline_scripts; async_scripts; races_with; nondet } =
   if IntSet.mem v dom_accesses then HasDOMAccess
   else if not (IntSet.is_empty dom_accesses) then DominatedByDOMAccess
   else if not (IntSet.is_empty inline_scripts) then DominatedByInlineScript
   else if not (IntSet.is_empty async_scripts) then DominatedByAsyncScript
+  else if not (Races.RaceSet.is_empty races_with) then Racing
   else if not (StringSet.is_empty nondet || IntSet.mem v assume_deterministic)
   then Nondeterministic
   else Deferable
@@ -73,8 +75,7 @@ let deferability_analysis assume_deterministic cl has_nondeterminism dom =
                                 "guessing inline") v);
                  IsInlineScript
              | _ -> raise Exit
-           in Some { verdict = ve; nondet = IntMap.mem v has_nondeterminism;
-                     data = dom v }
+           in Some { verdict = ve; data = dom v }
          with Exit -> None | Not_found -> None)
       cl
 

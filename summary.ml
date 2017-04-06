@@ -146,6 +146,7 @@ let short_str_verdict = let open Deferability in function
   | DominatedByInlineScript -> "<- inline"
   | DominatedByAsyncScript -> "<- async"
   | Nondeterministic -> "nondet"
+  | Racing -> "racy"
 let pp_short_race pp { Races.script_ev; racing_ev; refs } =
   Fmt.pf pp "%d-%d@%a" script_ev racing_ev Trace.pp_reference refs
 let make_row name id { script_provenance; script_verdict; has_dom_writes;
