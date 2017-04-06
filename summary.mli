@@ -8,7 +8,7 @@ val pp_provenance : provenance Fmt.t
 
 type summary = {
   script_provenance : provenance;
-  script_verdict : Deferability.result;
+  script_verdict : Deferability.verdict;
   has_dom_writes : bool;
   has_potential_nondeterminism : StringSet.t;
   assumed_deterministic : bool;

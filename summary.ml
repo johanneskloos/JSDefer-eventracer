@@ -14,7 +14,7 @@ let pp_provenance = Fmt.using str_provenance Fmt.string
 
 type summary = {
   script_provenance: provenance;
-  script_verdict: Deferability.result;
+  script_verdict: Deferability.verdict;
   has_dom_writes: bool;
   has_potential_nondeterminism: StringSet.t;
   assumed_deterministic: bool;
@@ -40,7 +40,7 @@ let pp_summary pp { script_provenance; script_verdict; has_dom_writes;
                     potential_races } =
   Fmt.pf pp "%a@,%a@,Has DOM writes: %b@,Non-determinism: %a@,Races: %a@,"
     pp_provenance script_provenance
-    Deferability.pp_verdict script_verdict.Deferability.verdict
+    Deferability.pp_verdict script_verdict
     has_dom_writes
     pp_determinism (has_potential_nondeterminism, assumed_deterministic)
     Races.pp_races potential_races
@@ -63,21 +63,15 @@ let get_provenance trace script = let open ClassifyTask in function
   | ExternalDeferScript -> ScriptDeferred (lookup_url trace script)
   | ExternalUnknownScript -> ScriptOther (lookup_url trace script)
   | _ -> assert false
-let summarize_one assumed trace cl has_dom_write has_nondeterminism
-      potential_races script result =
+let summarize_one assumed trace cl script { Deferability.verdict; data } =
   let script_class = IntMap.find script cl in
     assert (ClassifyTask.is_toplevel_script script_class);
     let script_provenance = get_provenance  trace script script_class
-    and script_verdict = result
-    and has_dom_writes = IntSet.mem script has_dom_write
+    and script_verdict = verdict
+    and has_dom_writes = not (IntSet.is_empty data.Domination.dom_accesses)
     and assumed_deterministic = IntSet.mem script assumed
-    and has_potential_nondeterminism = try
-      IntMap.find script has_nondeterminism
-    with Not_found -> StringSet.empty
-    and potential_races =
-      Races.RaceSet.filter
-        (fun { Races.script = script' } -> script = script')
-        potential_races
+    and has_potential_nondeterminism = data.Domination.nondet
+    and potential_races = data.Domination.races_with
     in Log.info (fun k -> k "Adding script %d" script);
        { script_provenance; script_verdict;
          has_dom_writes; assumed_deterministic;
@@ -93,7 +87,7 @@ type page_summary = {
 let calculate_deferables per_script =
   let open Deferability in
   IntMap.fold (fun script { script_provenance; script_verdict } defs ->
-                 if script_verdict.verdict = Deferable then
+                 if script_verdict = Deferable then
                    (script, script_provenance) :: defs
                  else
                    defs)
@@ -110,8 +104,7 @@ let summarize base assumed
         IntMap.empty trace.events
   in let per_script =
     IntMap.mapi
-      (summarize_one assumed trace_map classification
-         has_dom_write has_nondeterminism potential_races) verdicts
+      (summarize_one assumed trace_map classification) verdicts
   in { per_script; name = base; deferables = calculate_deferables per_script }
 
 let pp_script_summary pp (script, summary) =
@@ -157,7 +150,7 @@ let make_row name id { script_provenance; script_verdict; has_dom_writes;
       name;
       string_of_int id;
       short_str_provenance script_provenance;
-      short_str_verdict script_verdict.Deferability.verdict;
+      short_str_verdict script_verdict;
       if has_dom_writes then "has DOM writes!" else "-";
       if assumed_deterministic then "assumed deterministic!" else "-";
       strf "@[<h>%a@]" (iter ~sep:sp StringSet.iter string)
