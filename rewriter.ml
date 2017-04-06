@@ -25,10 +25,15 @@ let extract_sync_scripts base_url scripts =
     |> fold (fun scripts node -> (R.attribute "src" node, node) :: scripts) []
     |> BatList.rev_map (fun (url, node) -> (resolve_uri base_url url, node))
 
-let merge_tasks =
-  LongestCommonSubsequence.longest_common_subsequence
-    (fun (url1, _) (url2, _) -> Uri.equal url1 url2)
-    (fun (url, defer) (_, node) -> (url, defer, node))
+let merge_tasks l1 l2 =
+  let open Fmt in
+    pr "@[<v>URIs in tasks:@,%a@,@,URIs in scripts:@,%a@,@]"
+      (list ~sep:cut (using fst Uri.pp_hum)) l1
+      (list ~sep:cut (using fst Uri.pp_hum)) l2;
+    LongestCommonSubsequence.longest_common_subsequence
+      (fun (url1, _) (url2, _) -> Uri.equal url1 url2)
+      (fun (url, defer) (_, node) -> (url, defer, node))
+      l1 l2
 
 let read_document base =
   let open Soup in
