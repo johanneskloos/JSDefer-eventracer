@@ -96,6 +96,10 @@ let sanity_check nd dw cl dep result =
            | _ -> ())
     dep
 
+let reflexive_closure g =
+  DependencyGraph.fold_vertex (fun v g -> DependencyGraph.add_edge g v v)
+    g g
+
 let calculate_domination has_nondeterminism has_dom_write cl depgraph =
   Log.debug (fun m -> m "Calculating domination facts");
   try
@@ -115,7 +119,7 @@ let calculate_domination has_nondeterminism has_dom_write cl depgraph =
                   try IntMap.find v has_nondeterminism
                   with Not_found -> StringSet.empty 
               })
-         depgraph
+         (reflexive_closure depgraph)
     in sanity_check has_nondeterminism has_dom_write cl depgraph result;
        result
   with Not_found ->
