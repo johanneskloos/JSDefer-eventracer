@@ -3,12 +3,13 @@ open Sqlite3
 exception DBError of Rc.t
 
 let data_bool b = Data.INT Int64.(if b then one else zero)
+let check = function
+  | Rc.OK
+  | Rc.DONE -> ()
+  | e -> raise (DBError e)
 
 let run stmt bindings =
-  List.iteri (fun i v -> match bind stmt (i+1) v with
-                | Rc.OK
-                | Rc.DONE -> ()
-                | e -> raise (DBError e))
+  List.iteri (fun i v -> check @@ bind stmt (i+1) v)
     bindings;
   let rec repeat n =
     if n = 0 then raise (DBError Rc.BUSY)
@@ -22,7 +23,8 @@ let run stmt bindings =
           Unix.sleep 1;
           repeat (n-1)
       | e -> raise (DBError e)
-  in repeat 3
+  in repeat 3;
+     check @@ reset stmt
 
 let write_one insert_scripts insert_nondet insert_race name =
   let open Summary in
@@ -76,7 +78,7 @@ let write_to_database filename { Summary.per_script; name } =
       prepare db
         ("INSERT INTO scripts (name, script, mode, source, " ^
          "verdict, dom_writes, assumed_deterministic) " ^
-         "VALUES (?, ?, ?, ?, ?, ?, ?")
+         "VALUES (?, ?, ?, ?, ?, ?, ?)")
     and ins_nondet =
       prepare db
         "INSERT INTO nondeterminism (name, script, nondet) VALUES (?, ?, ?)"
