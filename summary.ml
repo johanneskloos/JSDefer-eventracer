@@ -181,10 +181,7 @@ let csv_page_summary { per_script; name } chan =
   let open Csv in
     output_all (to_channel chan) @@
     IntMap.fold (fun id data rows -> make_row name id data :: rows)
-      per_script [[
-        "Page"; "Script #"; "Load"; "Address"; "Verdict"; "DOM writes";
-        "Assumed det?"; "Nondeterminism"; "URL"
-      ]]
+      per_script []
 
 let url = function
   | ScriptInline -> "???"
