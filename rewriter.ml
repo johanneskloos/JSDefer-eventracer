@@ -34,8 +34,11 @@ let rec apply_tasks tasks reals =
         apply_tasks tasks reals
     | _ :: tasks, reals -> apply_tasks tasks reals
     | [], [] -> ()
-    | [], _::_ ->
-        failwith "Left-over scripts after all tasks have been considered"
+    | [], scripts ->
+        failwith @@
+        let open Fmt in
+        strf "@[<v>Left-over scripts:@,%a@]"
+          (list ~sep:cut (using fst Uri.pp_hum)) scripts
 
 let process base =
   let open Soup in
