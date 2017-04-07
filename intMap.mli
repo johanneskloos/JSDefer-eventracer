@@ -1,3 +1,5 @@
+(** Maps on integers. *)
+
 include BatMap.S with type key = int
 val pp : ?sep:unit Fmt.t -> (key * 'a) Fmt.t -> 'a t Fmt.t
 val pp_default :

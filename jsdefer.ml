@@ -1,3 +1,9 @@
+(** Perform deferability analysis on event traces. *)
+
+(** This is the top-level driver for the analysis;
+   see jsdefer --help for information. *)
+
+(**/**)
 let load_determinism_facts filename =
   try
     BatFile.lines_of filename |> BatEnum.fold

@@ -1,3 +1,17 @@
+(** Rewrite pages for deferability. *)
+
+(** This is a top-level driver.
+
+  Usage: rewriter directories
+
+  The assumption is that each directory has the following
+  structure: It contains a file [results.csv], detailing the results
+  of deferablity analysis, and a file [index.html], containing
+  the HTML file to rewrite. It produces two new files,
+  [index.nodefer.html] and [index.defer.html]. The former is the
+  same as [index.html], up to pretty-printing of HTML, while
+  the latter also contains additional [defer] attributes. *)
+
 let re_dot = Str.regexp_string "."
 let totally_an_alias parts1 parts2 =
   let open BatList in
