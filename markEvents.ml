@@ -1,5 +1,3 @@
-open Trace
-
 (* Mark DOM writes and non-determinism *)
 type markings = {
   has_dom_write: IntSet.t;
@@ -7,6 +5,7 @@ type markings = {
 }
 
 let rec fold_js_commands_impl f level commands acc =
+  let open Trace in
   match level, commands with
     | _, [] -> acc
     | Some l, (Enter _ as command) :: commands ->
@@ -22,7 +21,7 @@ let rec fold_js_commands_impl f level commands acc =
     | None, _ :: commands ->
         fold_js_commands_impl f level commands acc
 
-let fold_js_command f { commands } acc =
+let fold_js_command f { Trace.commands } acc =
   fold_js_commands_impl f None commands acc
 
 let nondet_heap = [
@@ -49,17 +48,17 @@ let nondet_heap = [
 ]
 
 let nondet_string = function
-  | RHeap { objtype; prop } ->
+  | Trace.RHeap { objtype; prop } ->
       objtype ^ "." ^ prop
   | _ -> failwith "Unknown nondeterminism source"
 
 let is_nondet_ref = function
-  | RHeap { objtype; prop } ->
+  | Trace.RHeap { objtype; prop } ->
       List.mem (objtype, prop) nondet_heap
   | _ -> false
 
-let calculate_markings_for_event { has_dom_write; has_nondeterminism }
-      ({ id } as event) =
+let calculate_markings_for_event { has_dom_write; has_nondeterminism } =
+  let open Trace in fun ({ id } as event) ->
   let (dom, nondet) =
     fold_js_command (fun (dom, nondet) -> function
                        (*| Read (ref, _) when is_nondet_ref ref ->
@@ -81,7 +80,7 @@ let calculate_markings_for_event { has_dom_write; has_nondeterminism }
          else
            IntMap.add id nondet has_nondeterminism }
 
-let calculate_markings { events } =
+let calculate_markings { Trace.events } =
   Log.debug (fun m -> m "Calculating markings");
   BatList.fold_left calculate_markings_for_event
     { has_nondeterminism = IntMap.empty;

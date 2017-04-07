@@ -1,4 +1,4 @@
-open Trace
+module DependencyGraph = Trace.DependencyGraph
 
 let log_red src tgt=
   DetailLog.log
@@ -174,7 +174,7 @@ let calculate trace =
                   spec; po; potential_races = Races.RaceSet.empty;
                   script_short_timeouts = [];
                   dependency_graph = DependencyGraph.empty }
-  in let data' = reduce trace.races scripts cl data
+  in let data' = reduce trace.Trace.races scripts cl data
   in let depgraph = CalculateRFandMO.calculate_dependency_graph data'.spec
   in { data with dependency_graph = depgraph }
 

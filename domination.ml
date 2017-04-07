@@ -1,4 +1,4 @@
-open Trace
+module DependencyGraph = Trace.DependencyGraph
 
 type analysis_result = {
   dom_accesses: IntSet.t;

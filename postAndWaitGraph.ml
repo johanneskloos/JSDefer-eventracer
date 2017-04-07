@@ -1,4 +1,4 @@
-open Trace
+module DependencyGraph = Trace.DependencyGraph
 
 module PostWaitEdge = struct
   type t = POST | HB [@@deriving ord]
@@ -48,6 +48,7 @@ let add_edges hb po good g =
        |> add_edges_for PostWaitEdge.HB hb good good_set
 
 let build_post_wait_graph trace classifier =
+  let open Trace in
   Log.debug (fun m -> m "Building post/wait graph");
   let { events; deps } = trace
   in let js_tasks =

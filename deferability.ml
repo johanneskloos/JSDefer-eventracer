@@ -1,5 +1,3 @@
-open Trace
-
 type verdict =
     (* Deferable cases *)
     Deferable
