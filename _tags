@@ -1,3 +1,4 @@
 true: package(batteries), package(fmt), package(eventracer), package(uri)
-true: package(ppx_deriving.ord), package(ppx_deriving.show), package(yojson)
-true: package(logs), package(csv), package(sqlite3), package(lambdasoup)
+true: package(ppx_deriving.ord), package(ppx_deriving.show)
+true: package(logs), package(csv)
+<rewrite*>: package(lambdasoup)
