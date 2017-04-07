@@ -11,6 +11,3 @@ val guid_heuristic : bool ref
 
 (** Maximal size of the task pool. *)
 val task_pool_max : int ref
-
-(** SQLite database for logging, if any. *)
-val database : string option ref

@@ -31,10 +31,6 @@ let calculate_and_write_analysis base intrace indet makeoutput =
       (Summary.csv_page_summary summary);
     Helpers.write_to_file (makeoutput "defer")
       Summary.pp_defer summary;
-    begin match !Config.database with
-      | Some filename -> Database.write_to_database filename summary
-      | None -> ()
-    end;
     DetailLog.close_log ()
 
 let analyze filename =
@@ -76,10 +72,6 @@ If the -d option is given, an additional file "deterministic" is read,
 if it exists, which contains the IDs of scripts to treat as actually
 deterministic.
 
-If the -b option is given, the information written to result.csv
-is also written to the indicated SQLite database. Beware that this
-is somewhat buggy, since SQLite doesn't deal well with concurrency.
-
 The -t, -T and -n options control how many analysis tasks can run in
 parallel, and when they time out.
 |}
@@ -97,7 +89,6 @@ let () =
     ("-T", Arg.Unit (fun () -> timeout := None), "no timeout");
     ("-d", Arg.Set Config.use_determinism_facts,
      "use information from determinism fact files");
-    ("-b", Arg.String (fun f -> Config.database := Some f), "log to database")
   ] (fun task -> tasks := task :: !tasks) usage;
   List.iter (fun fn -> TaskPool.start_task !timeout analyze fn) !tasks;
   TaskPool.drain ()
