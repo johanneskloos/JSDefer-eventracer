@@ -1,4 +1,3 @@
-val source : Logs.src ref
 (** Logging. *)
 
 (** Set the logging source. *)
