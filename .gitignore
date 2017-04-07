@@ -10,3 +10,4 @@ traces_pb.ml
 traces_pb.mli
 examples
 testdata
+documentation.docdir
