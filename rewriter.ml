@@ -43,13 +43,18 @@ let extract_sync_scripts base scripts =
 
 let merge_tasks l1 l2 =
   let open Fmt in
-    pr "@[<v>URIs in tasks:@,%a@,@,URIs in scripts:@,%a@,@]"
-      (list ~sep:cut (using fst Uri.pp_hum)) l1
-      (list ~sep:cut (using fst Uri.pp_hum)) l2;
-    LongestCommonSubsequence.longest_common_subsequence
+  let l = LongestCommonSubsequence.longest_common_subsequence
       (fun (url1, _) (url2, _) -> Uri.equal url1 url2)
       (fun (url, defer) (_, node) -> (url, defer, node))
       l1 l2
+  in pr "Incoming: %d tasks, %d scripts. LCS of %d tasks:@,%a@,"
+       (List.length l1) (List.length l2) (List.length l)
+       (list ~sep:cut @@
+        using (fun (id, defer, _) -> (defer, id)) @@ hbox @@
+        pair ~sep:(const string "\t") bool Uri.pp_hum)
+       l;
+     BatList.filter_map
+       (fun (_, defer, node) -> if defer then Some node else None) l
 
 let read_document base =
   let open Soup in
@@ -64,10 +69,7 @@ let process base =
   in 
     Soup.to_string document
     |> Soup.write_file (Filename.concat base "index.nodefer.html");
-    BatList.iter (function
-                    | (_, true, node) -> Soup.set_attribute "defer" "" node
-                    | _ -> ())
-      shared_scripts;
+    BatList.iter (Soup.set_attribute "defer" "") shared_scripts;
     let outfile = Filename.concat base "index.defer.html" in
       Soup.to_string document |> Soup.write_file outfile
 
