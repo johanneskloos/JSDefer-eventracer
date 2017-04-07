@@ -7,5 +7,5 @@ type analysis_result = {
 }
 val pp_analysis_result : analysis_result Fmt.t
 val calculate_domination: StringSet.t IntMap.t -> IntSet.t ->
-  Races.RaceSet.t -> ClassifyTask.classification IntMap.t ->
+  Races.RaceSet.t -> ClassifyTask.trace_classifications ->
   Trace.DependencyGraph.t -> (int -> analysis_result)

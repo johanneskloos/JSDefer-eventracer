@@ -88,10 +88,11 @@ let is_event_handler = function
  * to CachedResource: NetworkWait
  * ----
  * Other *)
+type trace_classifications = classification IntMap.t
 type state = {
   outstanding_animation_frames: IntSet.t;
   animation_frame_request_functions: int list;
-  classification: classification IntMap.t [@opaque];
+  classification: trace_classifications [@opaque];
   parsing_may_be_suspended: bool
 } [@@deriving show]
 

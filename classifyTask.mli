@@ -19,9 +19,10 @@ type classification =
   | NetworkWait
   | Other
   [@@deriving show]
+type trace_classifications = classification IntMap.t
 
 val is_script : classification -> bool
 val is_toplevel_script : classification -> bool
 val is_event_handler : classification -> bool
 
-val classify : Trace.trace -> Trace.trace * classification IntMap.t
+val classify : Trace.trace -> Trace.trace * trace_classifications

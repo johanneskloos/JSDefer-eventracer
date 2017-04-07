@@ -55,11 +55,12 @@ let per_event_writes_posts commands =
        | Read _ | Enter _ | Exit -> (post, posts))
     (ReferenceMap.empty, IntSet.empty) commands
 
-type event_standalone_spec = {
+type event_spec = {
   reads: value option ReferenceMap.t;
   writes: value option ReferenceMap.t;
   posts: IntSet.t
 }
+type trace_specs = event_spec IntMap.t
 
 let per_event_specification specs { id; commands } =
   let reads = per_event_reads commands
