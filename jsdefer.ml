@@ -13,7 +13,7 @@ let load_determinism_facts filename =
 
 let calculate_and_write_analysis base intrace indet makeoutput =
   if !Config.use_detailed_log then
-    DetailLog.open_log (open_out (makeoutput ".details"));
+    DetailLog.open_log (open_out (makeoutput "details"));
   let deterministic_scripts =
     if !Config.use_determinism_facts && Sys.file_exists indet then
       load_determinism_facts indet
@@ -54,6 +54,36 @@ let analyze filename =
           (base ^ ".deterministic")
           (fun suffix -> base ^ suffix)
 
+let usage = {|
+jsdefer [-dGLDT] [-n max_tasks] [-t timeout] inputs
+
+Calculates deferability information for the traces given in inputs.
+For each input, there are possible cases:
+- If the input is a file called "<trace>.log", output goes to
+  files called "<trace>.<something>".
+- If the input is a directory "<dir>" containing a file "ER_actionlog",
+  output goes to files called "<dir>/<something>".
+
+The following files are produces:
+1. "result", containing a human-readable summary of the analysis.
+2. "result.csv", containing the summary as a CSV file.
+3. "defer", containg the IDs and URLs of deferable scripts.
+
+If the -L option is given, a file "details" with minute trace information
+is produced.
+
+If the -d option is given, an additional file "deterministic" is read,
+if it exists, which contains the IDs of scripts to treat as actually
+deterministic.
+
+If the -b option is given, the information written to result.csv
+is also written to the indicated SQLite database. Beware that this
+is somewhat buggy, since SQLite doesn't deal well with concurrency.
+
+The -t, -T and -n options control how many analysis tasks can run in
+parallel, and when they time out.
+|}
+
 let () =
   let tasks = ref []
   and timeout = ref None in
@@ -68,6 +98,6 @@ let () =
     ("-d", Arg.Set Config.use_determinism_facts,
      "use information from determinism fact files");
     ("-b", Arg.String (fun f -> Config.database := Some f), "log to database")
-  ] (fun task -> tasks := task :: !tasks) "";
+  ] (fun task -> tasks := task :: !tasks) usage;
   List.iter (fun fn -> TaskPool.start_task !timeout analyze fn) !tasks;
   TaskPool.drain ()
