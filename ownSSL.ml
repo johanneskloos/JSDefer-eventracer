@@ -12,10 +12,13 @@
   (i.e., they start with https://directory/...).
   This is used to figure out pages that need special handling. *)
 
-let current_base = ref "???"
+let current_base = ref Uri.empty
 
-let is_local_uri host url =
-  BatOption.default !current_base (Uri.host url) = host
+let is_local_uri host uri =
+  let open BatOption in
+  let host' = Uri.host uri |? (Uri.host !current_base |? host)
+  and scheme' = Uri.scheme uri |? (Uri.scheme !current_base |? "http")
+  in host = host' && scheme' = "https"
 
 let get_attr key args =
   BatList.assoc key
@@ -29,10 +32,13 @@ let add_resource host args urls element =
       else urls
   with Not_found -> urls
 
+let anchor href = BatString.starts_with href "#"
+
 let add_link host args urls element =
   try
+    let href = get_attr "href" args in
     let uri = Uri.of_string (get_attr "href" args) in
-      if is_local_uri host uri then
+      if not (anchor href) && is_local_uri host uri then
         match get_attr "rel" args with
           | exception Not_found -> ("Regular " ^ element, uri) :: urls
           | "dns-prefetch" -> ("DNS prefetch", uri) :: urls
@@ -51,11 +57,7 @@ let collect_urls_from_attributes host args urls (ns, tag) =
   begin match tag with
     | "link" -> add_link host args urls "link"
     | "base" -> begin try
-        current_base :=
-        BatOption.get @@
-        Uri.host @@
-        Uri.of_string @@
-        get_attr "href" args
+        current_base := Uri.of_string @@ get_attr "href" args
       with Not_found -> ()
       end; urls
     | "a" -> add_link host args urls "a"
@@ -96,7 +98,7 @@ let process dir =
   let open Markup in
   let (input, close_file) = file (Filename.concat dir "index.html")
   and base = Filename.basename dir in try
-    current_base := base;
+    current_base := Uri.of_string (Format.sprintf "http://%s/" base);
     let document = parse_html input in
     let urls =
       document
