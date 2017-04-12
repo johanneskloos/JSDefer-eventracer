@@ -17,7 +17,9 @@ let current_base = ref "???"
 let is_local_uri host url =
   BatOption.default !current_base (Uri.host url) = host
 
-let get_attr key args = BatList.assoc ("", key) args
+let get_attr key args =
+  BatList.assoc key
+    (BatList.map (fun ((_, key), value) -> (key, value)) args)
 
 let add_resource host args urls element =
   try
@@ -30,21 +32,23 @@ let add_resource host args urls element =
 let add_link host args urls element =
   try
     let uri = Uri.of_string (get_attr "href" args) in
-      match get_attr "rel" args with
-        | exception Not_found -> ("Regular " ^ element, uri) :: urls
-        | "dns-prefetch" -> ("DNS prefetch", uri) :: urls
-        | "icon" -> ("Icon", uri) :: urls
-        | "pingback" -> ("Pingback", uri) :: urls
-        | "preconnect" -> ("Pingback", uri) :: urls
-        | "prefetch" -> ("Prefetch", uri) :: urls
-        | "preload" -> ("Preload", uri) :: urls
-        | "prerender" -> ("Prerender", uri) :: urls
-        | "stylesheet" -> ("Stylesheet", uri) :: urls
-        | _ -> urls
+      if is_local_uri host uri then
+        match get_attr "rel" args with
+          | exception Not_found -> ("Regular " ^ element, uri) :: urls
+          | "dns-prefetch" -> ("DNS prefetch", uri) :: urls
+          | "icon" -> ("Icon", uri) :: urls
+          | "pingback" -> ("Pingback", uri) :: urls
+          | "preconnect" -> ("Pingback", uri) :: urls
+          | "prefetch" -> ("Prefetch", uri) :: urls
+          | "preload" -> ("Preload", uri) :: urls
+          | "prerender" -> ("Prerender", uri) :: urls
+          | "stylesheet" -> ("Stylesheet", uri) :: urls
+          | _ -> urls
+            else urls
   with Not_found -> urls
 
 let collect_urls_from_attributes host args urls (ns, tag) =
-  if ns <> "" then urls else begin match tag with
+  begin match tag with
     | "link" -> add_link host args urls "link"
     | "base" -> begin try
         current_base :=
