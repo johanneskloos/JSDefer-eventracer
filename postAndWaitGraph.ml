@@ -10,6 +10,12 @@ module PostWaitGraph =
   Graph.Persistent.Digraph.ConcreteLabeled(DependencyGraph.V)(PostWaitEdge)
 module Oper = Graph.Oper.P(PostWaitGraph)
 
+let get_successors g v =
+  if DependencyGraph.mem_vertex g v then
+    DependencyGraph.succ g v
+  else [] (* This is a rare case, but it may happen.
+           * Compare the kindredhealthcare trace. *)
+
 let add_successors lbl r v good g =
   Log.debug (fun m -> m "Sucessors for %d" v);
   let seen = Hashtbl.create 17 in
@@ -27,10 +33,10 @@ let add_successors lbl r v good g =
                           v' (List.length tasks));
             search (PostWaitGraph.add_edge_e g (v, lbl, v')) tasks
           end else
-            search g (DependencyGraph.succ r v' @ tasks)
+            search g (get_successors r v' @ tasks)
         end
     | [] -> g
-  in search g (DependencyGraph.succ r v)
+  in search g (get_successors r v)
 
 let add_edges_for lbl r good good_set g =
   Log.debug (fun m -> m "Iterating edges");
