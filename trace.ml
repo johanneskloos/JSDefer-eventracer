@@ -294,7 +294,7 @@ let match_reference_pats =
        });
     (re "Array\\[(-?\\d+)\\]\\$LEN",
      fun sub -> RArrayLength (int_of_string (get_substring sub 1)));
-    (re "([#A-Za-z\\d]+)\\[(0x[\\da-fA-F]+)\\]\\.(.+)",
+    (re "([-#A-Za-z\\d]+)\\[(0x[\\da-fA-F]+)\\]\\.(.*)",
      fun sub -> RNodeEvent {
          nodetype = get_substring sub 1;
          node = pointer_of_string (get_substring sub 2);
