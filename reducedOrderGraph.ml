@@ -97,32 +97,6 @@ let merge_successors_scripts races scripts cl data =
          data)
     scripts data
 
-    (*
-let find_dcl_and_onload cl scripts =
-  let open ClassifyTask in
-  IntSet.filter (fun v -> match IntMap.find v cl with
-                   | WindowInteractiveScript
-                   | WindowCompleteScript -> true
-                   | _ -> false)
-    scripts
-    |> IntSet.to_list
-
-     *)
-    (*
-let merge_post_dcl scripts cl data =
-  let open ClassifyTask in
-  let dcl_and_onload = find_dcl_and_onload cl scripts
-  and pred v = true
-  in let succs =
-     IntSet.to_list(gather_post_successors_set pred data.po dcl_and_onload) 
-  in match succs  with
-    | v::vs ->
-        log_succs "DCL" v vs;
-        let { spec } = BatList.fold_left (merge_successor v) data vs in
-          (IntMap.find v spec).ReadsWrites.reads
-    | [] -> ReferenceMap.empty
-     *)
-
 let filter_graph p g =
   let open PostAndWaitGraph in
   PostWaitGraph.empty
