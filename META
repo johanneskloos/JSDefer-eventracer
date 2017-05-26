@@ -1,0 +1,4 @@
+version = "0.9"
+description =
+"Deferability analysis for JavaScript"
+requires = "batteries fmt eventracer uri ppx_deriving logs csv lambdasoup"

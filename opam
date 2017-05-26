@@ -1,0 +1,25 @@
+opam-version: "1.2"
+name: "JSDefer"
+version: "v0.9"
+maintainer: "Johannes Kloos <jkloos@mpi-sws.org>"
+authors: "Johannes Kloos <jkloos@mpi-sws.org>"
+homepage: "https://github.com/johanneskloos/JSDefer-eventracer"
+bug-reports: "https://github.com/johanneskloos/JSDefer-eventracer/issues"
+license: "Proprietary"
+dev-repo: "https://github.com/johanneskloos/JSDefer-eventracer.git"
+build: [
+  ["ocamlbuild" "tools.otarget"]
+]
+install: ["./install.sh"]
+remove: ["ocamlfind" "remove" "JSDefer"]
+depends: [
+  "ocamlfind" {build}
+  "batteries"
+  "fmt"
+  "EventRacer"
+  "uri"
+  "ppx_deriving"
+  "logs"
+  "csv"
+  "lambdasoup"
+]
